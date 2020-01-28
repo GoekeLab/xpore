@@ -1,0 +1,69 @@
+import multiprocessing
+import numpy
+
+def decor_message(text,opt='simple'):
+    text = text.upper()
+    if opt == 'header':
+        return text
+    else:
+        return '--- ' + text + ' ---\n'
+
+def end_queue(task_queue,n_processes):
+    for _ in range(n_processes):
+        task_queue.put(None)
+    return task_queue
+        
+def get_gene_ids(read_count_filepath,read_count_min=0,read_count_max=numpy.inf): #todo
+    df_read_count = pandas.read_csv(read_count_filepath)
+    cond = df_read_count['n_reads'] >= read_count_min
+    cond &= df_read_count['n_reads'] <= read_count_max
+    gene_ids = sorted(list(df_read_count.loc[cond,'g_id'].unique()))
+    return gene_ids
+
+## tmp: to remove
+# def get_gene_ids(config_filepath): # arguments are not used.
+#     import os,pandas
+#     from ..diffmod.configurator import Configurator
+#     # config_filepath = '/ploy_ont_workspace/github/experiments/Release_v1_0/config_manuscript/gmm_HEK293T-KO_HEK293T-WT_HEPG2-WT_K562-WT_A549-WT_MCF7-WT_reps_v01.ini'
+#     config = Configurator(config_filepath) 
+#     paths = config.get_paths()
+#     info = config.get_info()
+#     criteria = config.get_criteria() 
+#     df_gt_ids = pandas.read_csv('/ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping_gt_ids.csv')    
+#     gene_ids = set(df_gt_ids['g_id'].unique())
+#     read_count_sum_min,read_count_sum_max = criteria['read_count_min'],criteria['read_count_max']
+#     df_read_count = {}
+#     for run_name in set(info['run_names']):
+#         read_count_filepath = os.path.join(paths['data_dir'],run_name,'summary','read_count_per_gene.csv')
+#         df_read_count[run_name] = pandas.read_csv(read_count_filepath).set_index('g_id') 
+
+#     for run_name in set(info['run_names']):
+#         df_read_count[run_name].reset_index(inplace=True)
+#         cond = df_read_count[run_name]['n_reads'] >= criteria['read_count_min']
+#         cond &= df_read_count[run_name]['n_reads'] <= criteria['read_count_max']
+#         gene_ids = gene_ids.intersection(set(df_read_count[run_name].loc[cond,'g_id'].values))
+
+#     gene_ids = sorted(list(gene_ids))
+#     return gene_ids
+##
+class Consumer(multiprocessing.Process):
+    """ For parallelisation """
+    
+    def __init__(self,task_queue,task_function,locks=None,result_queue=None):
+        multiprocessing.Process.__init__(self)
+        self.task_queue = task_queue
+        self.locks = locks
+        self.task_function = task_function
+        self.result_queue = result_queue
+        
+    def run(self):
+        proc_name = self.name
+        while True:
+            next_task_args = self.task_queue.get()
+            if next_task_args is None:
+                self.task_queue.task_done()
+                break
+            result = self.task_function(*next_task_args,self.locks)    
+            self.task_queue.task_done()
+            if self.result_queue is not None:
+                self.result_queue.put(result)
