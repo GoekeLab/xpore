@@ -1,6 +1,6 @@
 # Large files
-tests/
-db/
+#tests/
+#db/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
