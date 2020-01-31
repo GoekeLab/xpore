@@ -6,10 +6,11 @@ Dillinger is a collection of tools for Nanopore data analysis.
 
 xpore requires [Python3](https://www.python.org) to run.
 
-To install, run
+To install our xpore package and its dependencies, run
 
 ```sh
 $ python setup.py install
+$ pip install requirements.txt 
 ```
 
 ### Detection of differential modification
