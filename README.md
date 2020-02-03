@@ -54,7 +54,7 @@ $ xpore-dataprep --eventalign nanopolish/eventalign.txt \
 ```
 Output files: `eventalign.hdf5`, `eventalign.log`, `data.json`, `data.index` , `data.log`
 
-Now the data are ready for estimating differential modification using `xpore-diffmod`. To , Hek293T_directRNA and Hek293T-METTL3-KO_directRNA, we can use the example confgiuration file 
+Now the data are ready for estimating differential modification using `xpore-diffmod`. To call the differential modification between Hek293T_directRNA and Hek293T-METTL3-KO_directRNA, we can use the example confgiuration file 
 ```sh
 $ xpore-diffmod --config_filepath ./tests/config/diffmod.ini --n_processes 4
 ```
