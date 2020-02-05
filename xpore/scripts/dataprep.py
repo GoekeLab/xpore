@@ -360,6 +360,6 @@ if __name__ == '__main__':
     Usage:
         xpore-dataprep --eventalign --summary --bamtx --out_dir --n_processes
     """
-    main
+    main()
 
 
