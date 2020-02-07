@@ -11,6 +11,7 @@ from pyensembl import EnsemblRelease
 from tqdm import tqdm
 from operator import itemgetter
 from collections import defaultdict
+import numpy.lib.recfunctions as rfn 
 
 from . import helper
 from ..utils import misc
@@ -19,10 +20,11 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # Required arguments
-    parser.add_argument('--eventalign', dest='eventalign', help='Eventalign filepath from nanopolish.',required=True)
-    parser.add_argument('--summary', dest='summary', help='Summary filepath from nanopolish.',required=True)
+    # parser.add_argument('--eventalign', dest='eventalign', help='Eventalign filepath from nanopolish.',required=True)
+    # parser.add_argument('--summary', dest='summary', help='Summary filepath from nanopolish.',required=True)
     parser.add_argument('--bamtx', dest='bamtx', help='bamtx filepath.',required=True)
     parser.add_argument('--mapping', dest='mapping', help='gene-transcript mapping directory.',required=True)
+    # parser.add_argument('--data_dir', dest='data_dir', help='Data directory.',required=True)
     parser.add_argument('--out_dir', dest='out_dir', help='Output directory.',required=True)
 
 
@@ -200,8 +202,14 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
 
     # Load tasks into task_queue.
     df_count.set_index('gene_id',inplace=True)
-    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #todo
+    # gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #todo
     # gene_ids = df_count.index
+    
+    # Load tasks into task_queue.
+    with open('/ploy_ont_data/genes.csv','r') as f:
+        reader = csv.reader(f)
+        gene_ids = sum(list(reader),[]) # flatten the list.
+
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
         for gene_id in gene_ids:            
             gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id)
@@ -210,22 +218,27 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
             keys = zip(df_gt['tx_id'], df_gt['tx_pos'])
             values = zip(df_gt['chr'], df_gt['g_id'], df_gt['g_pos'], df_gt['kmer'])
             t2g_mapping = dict(zip(keys,values))
-
-            df = df_count.loc[gene_id]
+            
+            try:
+                df = df_count.loc[gene_id]
+            except KeyError:
+                continue
+            print(gene_id)
             n_reads = df['n_reads'].sum()
+            read_ids = []
             if n_reads >= read_count_min:
-                tx_ids = set(df[['transcript_id']].values.flatten())
+                tx_ids = df_gt['tx_id'].unique()
                 data_dict = dict()
-                read_ids = []
                 for tx_id in tx_ids:
-                    if tx_id not in f:
+                    if tx_id not in f: # no eventalign for tx_id
                         continue
                     for read_id in f[tx_id].keys():
                         if read_id not in read_ids:
                             data_dict[read_id] = f[tx_id][read_id]['events'][:]
                             read_ids += [read_id]
 
-            task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
+            if len(read_ids) > read_count_min:
+                task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
@@ -327,39 +340,114 @@ def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):
         f.write('%s,%d,%d\n' %(gene_id,pos_start,pos_end))
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(log_str + '\n')
+        
+def reformat_eventalign(tx_id,tx_dir,out_paths,locks):
+    columns = ['transcript_id','position','reference_kmer','norm_mean']
 
+
+    for read_filename in os.listdir(tx_dir):        
+        with h5py.File(os.path.join(tx_dir,read_filename),'r') as f:
+            events = f['nanopolish']['eventalign']['events'][:][columns]
+            read_id = read_filename.split('.')[0]
+            read_ids = numpy.array([read_id]*len(events),dtype=numpy.dtype([('read_id','S36')]))
+            events = rfn.merge_arrays((read_ids, events), asrecarray=True, flatten=True)  
+            new_dtype=[('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]
+            events = events.astype(numpy.dtype(new_dtype))
+        with locks['hdf5'], h5py.File(out_paths['hdf5'],'a') as f:
+            hf_tx = f.require_group('%s/%s' %(tx_id,read_id))
+            if 'events' in hf_tx:
+                continue
+            else:
+                hf_tx['events'] = events
+
+    with locks['log'], open(out_paths['log'],'a') as f:
+        f.write(tx_id + '\n')
+
+    
+def parallel_reformat_eventalign(data_dir,out_dir,n_processes):
+    # Create output paths and locks.
+    out_paths,locks = dict(),dict()
+    for out_filetype in ['hdf5','log']:
+        out_paths[out_filetype] = os.path.join(out_dir,'eventalign.%s' %out_filetype)
+        locks[out_filetype] = multiprocessing.Lock()
+                
+    # Writing the starting of the files.
+    h5py.File(out_paths['hdf5'],'w').close()
+    open(out_paths['log'],'w').close()
+
+    # Create communication queues.
+    task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
+
+    # Create and start consumers.
+    consumers = [helper.Consumer(task_queue=task_queue,task_function=reformat_eventalign,locks=locks) for i in range(n_processes)]
+    for p in consumers:
+        p.start()
+
+    # Load tasks into task_queue.
+    with open('/ploy_ont_data/transcripts.csv','r') as f:
+        reader = csv.reader(f)
+        transcript_ids = sum(list(reader),[]) # flatten the list.
+        
+    
+    transcript_ids_processed = []
+    for tx_id in transcript_ids:
+        tx_dir = os.path.join(data_dir,tx_id)
+        if not os.path.exists(tx_dir):
+            continue
+        transcript_ids_processed += [tx_id]
+        task_queue.put((tx_id,tx_dir,out_paths)) # Blocked if necessary until a free slot is available. 
+
+
+    # Put the stop task into task_queue.
+    task_queue = helper.end_queue(task_queue,n_processes)
+
+    # Wait for all of the tasks to finish.
+    task_queue.join()
+    
+    with open(out_paths['log'],'a') as f:
+        f.write('Total %d transcripts.\n' %len(transcript_ids_processed))
+        f.write(helper.decor_message('successfully finished'))
+
+    
+    
 def main():
+    
     args = get_args()
     #
     n_processes = args.n_processes        
-    eventalign_filepath = args.eventalign
-    summary_filepath = args.summary
+    
+    # data_dir = args.data_dir
+
+    # eventalign_filepath = args.eventalign
+    # summary_filepath = args.summary
     bamtx_filepath = args.bamtx
     out_dir = args.out_dir
     ensembl_version = args.ensembl
     gt_mapping_dir = args.mapping
-    read_count_min = args.read_count_min
+    read_count_min = 30 #args.read_count_min
 
     misc.makedirs(out_dir) #todo: check every level.
+    # parallel_reformat_eventalign(data_dir,out_dir,n_processes)
+
     
-    # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
+#     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
+    # parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
     
-    # (2) Generate read count from the bamtx file.
+#     # (2) Generate read count from the bamtx file.
     read_count_filepath = os.path.join(out_dir,'read_count.csv')
     if os.path.exists(read_count_filepath):
         df_count = pandas.read_csv(read_count_filepath)
     else:
         df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
 
-    # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
+#     # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
     parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min)
     
 if __name__ == '__main__':
     """
     Usage:
-        xpore-dataprep --eventalign --summary --bamtx --out_dir --n_processes
+        xpore-backdoor --mapping /ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping --bamtx bamtx/aligned.bam --out_dir dataprep --n_processes 2
     """
-    main
+    main()
 
-
+    

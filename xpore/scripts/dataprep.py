@@ -210,22 +210,23 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
             keys = zip(df_gt['tx_id'], df_gt['tx_pos'])
             values = zip(df_gt['chr'], df_gt['g_id'], df_gt['g_pos'], df_gt['kmer'])
             t2g_mapping = dict(zip(keys,values))
+            
 
             df = df_count.loc[gene_id]
             n_reads = df['n_reads'].sum()
+            read_ids = []
             if n_reads >= read_count_min:
-                tx_ids = set(df[['transcript_id']].values.flatten())
+                tx_ids = df_gt['tx_id'].unique() 
                 data_dict = dict()
-                read_ids = []
                 for tx_id in tx_ids:
-                    if tx_id not in f:
+                    if tx_id not in f: # no eventalign for tx_id
                         continue
                     for read_id in f[tx_id].keys():
                         if read_id not in read_ids:
                             data_dict[read_id] = f[tx_id][read_id]['events'][:]
                             read_ids += [read_id]
-
-            task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
+            if len(read_ids) > read_count_min:
+                task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
@@ -358,7 +359,7 @@ def main():
 if __name__ == '__main__':
     """
     Usage:
-        xpore-dataprep --eventalign --summary --bamtx --out_dir --n_processes
+        xpore-dataprep --eventalign --summary --bamtx --mapping --out_dir --n_processes
     """
     main()
 
