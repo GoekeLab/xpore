@@ -97,7 +97,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         out_paths[out_filetype] = os.path.join(out_dir,'eventalign.%s' %out_filetype)
         locks[out_filetype] = multiprocessing.Lock()
         
-    read_ids_processed = defaultdict(lambda: False, read_ids_processed)
+    read_ids_processed = defaultdict(lambda: False, {})
     if resume:
         with open(out_paths['log'],'r') as f:
             reader = csv.reader(f)
