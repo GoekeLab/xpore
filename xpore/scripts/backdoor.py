@@ -20,8 +20,8 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # Required arguments
-    # parser.add_argument('--eventalign', dest='eventalign', help='Eventalign filepath from nanopolish.',required=True)
-    # parser.add_argument('--summary', dest='summary', help='Summary filepath from nanopolish.',required=True)
+    parser.add_argument('--eventalign', dest='eventalign', help='Eventalign filepath from nanopolish.',required=True)
+    parser.add_argument('--summary', dest='summary', help='Summary filepath from nanopolish.',required=True)
     parser.add_argument('--bamtx', dest='bamtx', help='bamtx filepath.',required=True)
     parser.add_argument('--mapping', dest='mapping', help='gene-transcript mapping directory.',required=True)
     # parser.add_argument('--data_dir', dest='data_dir', help='Data directory.',required=True)
@@ -221,6 +221,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
         gene_ids = sum(list(reader),[]) # flatten the list.
 
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
+        gene_ids_processed = []
         for gene_id in gene_ids:            
             gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id)
             df_gt = pandas.read_csv(gt_mapping_filepath)
@@ -233,7 +234,6 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
                 df = df_count.loc[gene_id]
             except KeyError:
                 continue
-            print(gene_id)
             n_reads = df['n_reads'].sum()
             read_ids = []
             if n_reads >= read_count_min:
@@ -249,6 +249,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
 
             if len(read_ids) > read_count_min:
                 task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
+                gene_ids_processed += [gene_id]
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
@@ -264,7 +265,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
     ###
     
     with open(out_paths['log'],'a+') as f:
-        f.write('Total %d genes.\n' %len(gene_ids))
+        f.write('Total %d genes.\n' %len(gene_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
 def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):  
@@ -429,8 +430,8 @@ def main():
     
     # data_dir = args.data_dir
 
-    # eventalign_filepath = args.eventalign
-    # summary_filepath = args.summary
+    eventalign_filepath = args.eventalign
+    summary_filepath = args.summary
     bamtx_filepath = args.bamtx
     out_dir = args.out_dir
     ensembl_version = args.ensembl
@@ -441,7 +442,7 @@ def main():
     # parallel_reformat_eventalign(data_dir,out_dir,n_processes)
 
     
-#     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
+    # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
     # parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
     
 #     # (2) Generate read count from the bamtx file.
@@ -457,7 +458,7 @@ def main():
 if __name__ == '__main__':
     """
     Usage:
-        xpore-backdoor --mapping /ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping --bamtx bamtx/aligned.bam --out_dir dataprep --n_processes 2
+        xpore-backdoor --eventalign eventalign.txt --summary summary.txt --mapping /ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping --bamtx bamtx/aligned.bam --out_dir dataprep --n_processes 2 --resume
     """
     main()
 

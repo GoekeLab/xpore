@@ -202,6 +202,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
     df_count.set_index('gene_id',inplace=True)
     gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #todo
     # gene_ids = df_count.index
+    gene_ids_processed = []
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
         for gene_id in gene_ids:            
             gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id)
@@ -227,6 +228,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
                             read_ids += [read_id]
             if len(read_ids) > read_count_min:
                 task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
+                gene_ids_processed += [gene_id]
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
@@ -242,7 +244,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
     ###
     
     with open(out_paths['log'],'a+') as f:
-        f.write('Total %d genes.\n' %len(gene_ids))
+        f.write('Total %d genes.\n' %len(gene_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
 def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):  
