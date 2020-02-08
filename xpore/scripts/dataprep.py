@@ -37,9 +37,7 @@ def get_args():
     
     return parser.parse_args()
 
-def combine(read_name,eventalign_per_read,out_paths,read_ids_processed,locks):
-    if read_ids_processed[read_name]:
-        return
+def combine(read_name,eventalign_per_read,out_paths,locks):
     eventalign_result = pandas.DataFrame.from_records(eventalign_per_read)
 
     cond_successfully_eventaligned = eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
@@ -90,23 +88,17 @@ def combine(read_name,eventalign_per_read,out_paths,read_ids_processed,locks):
         f.write('%s\n' %(read_name))    
 
 
-def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume):
+def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes):
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
     for out_filetype in ['hdf5','log']:
         out_paths[out_filetype] = os.path.join(out_dir,'eventalign.%s' %out_filetype)
         locks[out_filetype] = multiprocessing.Lock()
         
-    read_ids_processed = defaultdict(lambda: False, {})
-    if resume:
-        with open(out_paths['log'],'r') as f:
-            reader = csv.reader(f)
-            read_ids_processed.update({read_id: True for read_id in sum(list(reader),[])})
-            
-    else:
-        # Create empty files.
-        open(out_paths['hdf5'],'w').close()
-        open(out_paths['log'],'w').close()
+        
+    # Create empty files.
+    open(out_paths['hdf5'],'w').close()
+    open(out_paths['log'],'w').close()
 
     # Create communication queues.
     task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
@@ -131,7 +123,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
                 eventalign_per_read += [row_eventalign]
             else: 
                 # Load a read info to the task queue.
-                task_queue.put((read_name,eventalign_per_read,out_paths,read_ids_processed))
+                task_queue.put((read_name,eventalign_per_read,out_paths))
                 # Next read.
                 try:
                     row_summary = next(reader_summary)
@@ -340,6 +332,7 @@ def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):
 def main():
     args = get_args()
     #
+    n_processes = args.n_processes        
     eventalign_filepath = args.eventalign
     summary_filepath = args.summary
     bamtx_filepath = args.bamtx
@@ -347,14 +340,11 @@ def main():
     ensembl_version = args.ensembl
     gt_mapping_dir = args.mapping
     read_count_min = args.read_count_min
-   
-    n_processes = args.n_processes        
-    resume = args.resume
-    
+
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
+    parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
     
     # (2) Generate read count from the bamtx file.
     read_count_filepath = os.path.join(out_dir,'read_count.csv')
