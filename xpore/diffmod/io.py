@@ -6,6 +6,7 @@ from collections import OrderedDict
 import itertools
 
 from ..utils import stats
+from .gmm import GMM
 
 
 def get_dummies(x):

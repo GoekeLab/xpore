@@ -127,17 +127,17 @@ def main():
     # Read index files
     f_index = dict()
     for run_name in info['run_names']:
-        df_index = pandas.read_csv(os.path.join(paths['data_dir'],run_name,'xpore_multi_v00.ini','data.index'),sep=',') # todo
+        df_index = pandas.read_csv(os.path.join(paths['data_dir'],run_name,'stoi','data.index'),sep=',') # todo
         f_index[run_name] = dict(zip(df_index['gene_id'],zip(df_index['start'],df_index['end'])))
     # Open data files
     f_data = dict()
     for run_name in info['run_names']:
-        f_data[run_name] = open(os.path.join(paths['data_dir'],run_name,'xpore_multi_v00.ini','data.json'),'r') # todo
+        f_data[run_name] = open(os.path.join(paths['data_dir'],run_name,'stoi','data.json'),'r') # todo
         
     # Load tasks into task_queue.
     # gene_ids = helper.get_gene_ids(config.filepath)
     # gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #todo
-    gene_ids = ['ENSG00000086232']
+    gene_ids = ['ENSG00000071655','ENSG00000143878','ENSG00000175602','ENSG00000185651']
     for idx in gene_ids:
         data_dict = dict()
         for run_name in info['run_names']:

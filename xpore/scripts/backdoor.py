@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--summary', dest='summary', help='Summary filepath from nanopolish.',required=True)
     parser.add_argument('--bamtx', dest='bamtx', help='bamtx filepath.',required=True)
     parser.add_argument('--mapping', dest='mapping', help='gene-transcript mapping directory.',required=True)
-    # parser.add_argument('--data_dir', dest='data_dir', help='Data directory.',required=True)
+    parser.add_argument('--data_dir', dest='data_dir', help='Data directory.',required=True)
     parser.add_argument('--out_dir', dest='out_dir', help='Output directory.',required=True)
 
 
@@ -399,7 +399,10 @@ def parallel_reformat_eventalign(data_dir,out_dir,n_processes):
         reader = csv.reader(f)
         transcript_ids = sum(list(reader),[]) # flatten the list.
         
+    # transcript_ids = os.listdir(data_dir)
+    # print(len(transcript_ids),'transcripts')
     
+    ###
     transcript_ids_processed = []
     for tx_id in transcript_ids:
         tx_dir = os.path.join(data_dir,tx_id)
@@ -428,7 +431,7 @@ def main():
     n_processes = args.n_processes
     resume = args.resume
     
-    # data_dir = args.data_dir
+    data_dir = args.data_dir
 
     eventalign_filepath = args.eventalign
     summary_filepath = args.summary
@@ -439,26 +442,26 @@ def main():
     read_count_min = 30 #args.read_count_min
 
     misc.makedirs(out_dir) #todo: check every level.
-    # parallel_reformat_eventalign(data_dir,out_dir,n_processes)
+    parallel_reformat_eventalign(data_dir,out_dir,n_processes)
 
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
     # parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
     
 #     # (2) Generate read count from the bamtx file.
-    read_count_filepath = os.path.join(out_dir,'read_count.csv')
-    if os.path.exists(read_count_filepath):
-        df_count = pandas.read_csv(read_count_filepath)
-    else:
-        df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
+    # read_count_filepath = os.path.join(out_dir,'read_count.csv')
+#     if os.path.exists(read_count_filepath):
+#         df_count = pandas.read_csv(read_count_filepath)
+#     else:
+#         df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
 
-#     # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
-    parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min)
+# #     # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
+#     parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min)
     
 if __name__ == '__main__':
     """
     Usage:
-        xpore-backdoor --eventalign eventalign.txt --summary summary.txt --mapping /ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping --bamtx bamtx/aligned.bam --out_dir dataprep --n_processes 2 --resume
+        xpore-backdoor --data_dir eventalign_by_transcript --eventalign eventalign.txt --summary summary.txt --mapping /ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping --bamtx bamtx/aligned.bam --out_dir dataprep --n_processes 4
     """
     main()
 
