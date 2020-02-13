@@ -442,26 +442,28 @@ def main():
     read_count_min = 30 #args.read_count_min
 
     misc.makedirs(out_dir) #todo: check every level.
-    parallel_reformat_eventalign(data_dir,out_dir,n_processes)
+    
+    # (0)
+    # parallel_reformat_eventalign(data_dir,out_dir,n_processes)
 
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
     # parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
     
-#     # (2) Generate read count from the bamtx file.
-    # read_count_filepath = os.path.join(out_dir,'read_count.csv')
-#     if os.path.exists(read_count_filepath):
-#         df_count = pandas.read_csv(read_count_filepath)
-#     else:
-#         df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
+    # (2) Generate read count from the bamtx file.
+    read_count_filepath = os.path.join(out_dir,'read_count.csv')
+    if os.path.exists(read_count_filepath):
+        df_count = pandas.read_csv(read_count_filepath)
+    else:
+        df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
 
-# #     # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
-#     parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min)
+    # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
+    parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min)
     
 if __name__ == '__main__':
     """
     Usage:
-        xpore-backdoor --data_dir eventalign_by_transcript --eventalign eventalign.txt --summary summary.txt --mapping /ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping --bamtx bamtx/aligned.bam --out_dir dataprep --n_processes 4
+        xpore-backdoor --data_dir eventalign_by_transcript --eventalign eventalign.txt --summary summary.txt --mapping /ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping --bamtx bamtx/aligned.bam --out_dir dataprep --n_processes 6
     """
     main()
 

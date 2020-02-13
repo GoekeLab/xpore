@@ -200,7 +200,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
 
     # Load tasks into task_queue.
     df_count.set_index('gene_id',inplace=True)
-    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #todo
+    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data: todo
     # gene_ids = df_count.index
     gene_ids_processed = []
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:

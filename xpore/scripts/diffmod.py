@@ -127,29 +127,39 @@ def main():
     # Read index files
     f_index = dict()
     for run_name in info['run_names']:
-        df_index = pandas.read_csv(os.path.join(paths['data_dir'],run_name,'stoi','data.index'),sep=',') # todo
+        df_index = pandas.read_csv(os.path.join(paths['data_dir'],run_name,'dataprep','data.index'),sep=',') # todo
         f_index[run_name] = dict(zip(df_index['gene_id'],zip(df_index['start'],df_index['end'])))
     # Open data files
     f_data = dict()
     for run_name in info['run_names']:
-        f_data[run_name] = open(os.path.join(paths['data_dir'],run_name,'stoi','data.json'),'r') # todo
+        f_data[run_name] = open(os.path.join(paths['data_dir'],run_name,'dataprep','data.json'),'r') # todo
         
     # Load tasks into task_queue.
     # gene_ids = helper.get_gene_ids(config.filepath)
-    # gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #todo
-    gene_ids = ['ENSG00000071655','ENSG00000143878','ENSG00000175602','ENSG00000185651']
+    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
+    # gene_ids = ['ENSG00000159111']
     for idx in gene_ids:
+        skip = False
         data_dict = dict()
         for run_name in info['run_names']:
-            pos_start,pos_end = f_index[run_name][idx]
-            f_data[run_name].seek(pos_start,0)
-            json_str = f_data[run_name].read(pos_end-pos_start)
-            json_str = '{%s}' %json_str
-            data_dict[run_name] = json.loads(json_str) # A data dict for each gene.
+            ## todo: cleanup
+            try:
+                pos_start,pos_end = f_index[run_name][idx]
+            except KeyError:
+                skip = True
+            else:
+            ##
+                f_data[run_name].seek(pos_start,0)
+                json_str = f_data[run_name].read(pos_end-pos_start)
+                json_str = '{%s}' %json_str
+                data_dict[run_name] = json.loads(json_str) # A data dict for each gene.
+                
+        if skip: # todo: cleanup
+            continue
         # tmp
         out_paths['model_filepath'] = os.path.join(paths['out_dir'],'models','%s.hdf5' %idx)
         #
-        # if data_dict[run_name][idx] is not None: # todo: remove this line. Fix at dataprep
+        # if data_dict[run_name][idx] is not None: # todo: remove this line. Fix in dataprep
         task_queue.put((idx, data_dict, info, method, criteria, model_kmer, prior_params, out_paths,save_models,save_table)) # Blocked if necessary until a free slot is available.
 
         
