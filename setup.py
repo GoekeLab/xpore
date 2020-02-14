@@ -19,7 +19,7 @@ setup(
     url='https://github.com/ProML/xpore',
     packages=find_packages(),
     python_requires=">=3.5",
-    install_requires=['numpy','pandas','h5py','scipy'],
+    install_requires=[],
     entry_points={'console_scripts': ["xpore-dataprep={}.scripts.dataprep:main".format(__pkg_name__),
                                       "xpore-backdoor={}.scripts.backdoor:main".format(__pkg_name__),
                                       "xpore-diffmod={}.scripts.diffmod:main".format(__pkg_name__)]},

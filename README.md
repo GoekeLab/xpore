@@ -11,6 +11,7 @@ To install our xpore package and its dependencies, run
 ```sh
 $ python setup.py install
 $ pip install -r requirements.txt 
+$ pyensembl install --release 91 --species homo_sapiens
 ```
 
 ### Detection of differential modification
