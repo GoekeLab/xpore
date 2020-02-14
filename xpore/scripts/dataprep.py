@@ -152,14 +152,18 @@ def count_reads(version,bamtx_filepath,out_dir):
     bam_file = pysam.AlignmentFile(bamtx_filepath, "rb")
 
     rows = []
+    profile = defaultdict(int)
     for contig in tqdm(bam_file.references):
+        profile['n_contigs'] += 1
         n_reads = bam_file.count(contig=contig,read_callback=lambda r: (not r.is_secondary) and (not r.is_qcfail) and ((r.flag==0) | (r.flag==16)) ) #flag: 0(+),16(-) 
         if n_reads == 0:
+            profile['zero_reads'] += 1
             continue
         tx_id = contig.split('.')[0]     
         try:
             tx = grch38.transcript_by_id(tx_id)
         except ValueError:
+            profile['tx_id_not_found'] += 1
             continue
         else:
             g_id = tx.gene_id
@@ -172,6 +176,7 @@ def count_reads(version,bamtx_filepath,out_dir):
     # write to file.
     read_count_filepath = os.path.join(out_dir,'read_count.csv')
     df_count.to_csv(read_count_filepath,index=False,header=True,sep=',')
+    print(profile)
     return df_count
     
 def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min):
@@ -346,7 +351,7 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
+#    parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
     
     # (2) Generate read count from the bamtx file.
     read_count_filepath = os.path.join(out_dir,'read_count.csv')

@@ -10,7 +10,7 @@ To install our xpore package and its dependencies, run
 
 ```sh
 $ python setup.py install
-$ pip install requirements.txt 
+$ pip install -r requirements.txt 
 ```
 
 ### Detection of differential modification
