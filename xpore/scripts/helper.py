@@ -1,5 +1,6 @@
 import multiprocessing
 import numpy
+import os
 
 def decor_message(text,opt='simple'):
     text = text.upper()
