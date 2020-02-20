@@ -135,8 +135,8 @@ def main():
         f_data[run_name] = open(os.path.join(paths['data_dir'],run_name,'dataprep','data.json'),'r') # todo
         
     # Load tasks into task_queue.
-    # gene_ids = helper.get_gene_ids(config.filepath)
-    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
+    gene_ids = helper.get_gene_ids(config.filepath)
+#    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
     # gene_ids = ['ENSG00000159111']
     for idx in gene_ids:
         skip = False

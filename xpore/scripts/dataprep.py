@@ -206,8 +206,8 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
 
     # Load tasks into task_queue.
     df_count.set_index('gene_id',inplace=True)
-    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data: todo
-    # gene_ids = df_count.index
+    # gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data: todo
+    gene_ids = df_count.index
     gene_ids_processed = []
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
         for gene_id in gene_ids:            
@@ -352,7 +352,9 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
+    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
+    if helper.is_successful(eventalign_log_filepath):
+        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
     
     # (2) Generate read count from the bamtx file.
     read_count_filepath = os.path.join(out_dir,'read_count.csv')
@@ -363,7 +365,7 @@ def main():
 
     # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
     parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min)
-    
+
 if __name__ == '__main__':
     """
     Usage:

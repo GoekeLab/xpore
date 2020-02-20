@@ -67,3 +67,18 @@ class Consumer(multiprocessing.Process):
             self.task_queue.task_done()
             if self.result_queue is not None:
                 self.result_queue.put(result)
+
+def read_last_line(filepath): # https://stackoverflow.com/questions/3346430/what-is-the-most-efficient-way-to-get-first-and-last-line-of-a-text-file/3346788
+    if not os.path.exists(eventalign_log_filepath):
+        return
+    with open(filepath, "rb") as f:
+        first = f.readline()        # Read the first line.
+        f.seek(-2, os.SEEK_END)     # Jump to the second last byte.
+        while f.read(1) != b"\n":   # Until EOL is found...
+            f.seek(-2, os.SEEK_CUR) # ...jump back the read byte plus one more.
+        last = f.readline()         # Read last line.
+    return last
+
+def is_successful(filepath):
+    return read_last_line(filepath) == b'--- SUCCESSFULLY FINISHED ---\n'
+    

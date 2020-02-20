@@ -364,6 +364,7 @@ def reformat_eventalign(tx_id,tx_dir,out_paths,locks):
             events = rfn.merge_arrays((read_ids, events), asrecarray=True, flatten=True)  
             new_dtype=[('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]
             events = events.astype(numpy.dtype(new_dtype))
+            events['transcriptomic_position'] += 2  # the middle position of 5-mers.
         with locks['hdf5'], h5py.File(out_paths['hdf5'],'a') as f:
             hf_tx = f.require_group('%s/%s' %(tx_id,read_id))
             if 'events' in hf_tx:
@@ -444,8 +445,7 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (0)
-    # parallel_reformat_eventalign(data_dir,out_dir,n_processes)
-
+    parallel_reformat_eventalign(data_dir,out_dir,n_processes)
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
     # parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
@@ -463,7 +463,7 @@ def main():
 if __name__ == '__main__':
     """
     Usage:
-        xpore-backdoor --data_dir eventalign_by_transcript --eventalign eventalign.txt --summary summary.txt --mapping /ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping --bamtx bamtx/aligned.bam --out_dir dataprep --n_processes 6
+        xpore-backdoor --data_dir eventalign_by_transcript --eventalign eventalign.txt --summary summary.txt --mapping /ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping --bamtx bamtx/aligned.bam --out_dir dataprep --n_processes 8
     """
     main()
 
