@@ -353,7 +353,7 @@ def main():
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
     eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
-    if helper.is_successful(eventalign_log_filepath):
+    if not helper.is_successful(eventalign_log_filepath):
         parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
     
     # (2) Generate read count from the bamtx file.
