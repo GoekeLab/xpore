@@ -211,7 +211,9 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
     gene_ids_processed = []
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
         for gene_id in gene_ids:            
-            gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id)
+            gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id) # no mapping for gene_id
+            if not os.path.exists(gt_mapping_filepath):
+                continue
             df_gt = pandas.read_csv(gt_mapping_filepath)
 
             keys = zip(df_gt['tx_id'], df_gt['tx_pos'])
