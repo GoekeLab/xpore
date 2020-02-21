@@ -235,7 +235,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
                         if read_id not in read_ids:
                             data_dict[read_id] = f[tx_id][read_id]['events'][:]
                             read_ids += [read_id]
-            if (len(read_ids) >= read_count_min) and (len(read_ids) >= read_count_max):
+            if (len(read_ids) >= read_count_min) and (len(read_ids) <= read_count_max):
                 task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
                 gene_ids_processed += [gene_id]
 
