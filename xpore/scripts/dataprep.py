@@ -30,7 +30,8 @@ def get_args():
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     parser.add_argument('--n_processes', dest='n_processes', help='Number of processes.',type=int, default=1)
     parser.add_argument('--ensembl', dest='ensembl', help='ensembl version.',type=int, default=91)
-    parser.add_argument('--read_count_min', dest='read_count_min', help='Minimum of read counts per gene.',type=int, default=1)
+    parser.add_argument('--read_count_min', dest='read_count_min', help='Minimum of read counts per gene.',type=int, default=10)
+    parser.add_argument('--read_count_max', dest='read_count_max', help='Maximum of read counts per gene.',type=int, default=5000)
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
 
 
@@ -180,7 +181,7 @@ def count_reads(version,bamtx_filepath,out_dir):
     # print(profile)
     return df_count
     
-def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min):
+def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -224,7 +225,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
             df = df_count.loc[gene_id]
             n_reads = df['n_reads'].sum()
             read_ids = []
-            if n_reads >= read_count_min:
+            if (n_reads >= read_count_min) and (n_reads <= read_count_max):
                 tx_ids = df_gt['tx_id'].unique() 
                 data_dict = dict()
                 for tx_id in tx_ids:
@@ -234,7 +235,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
                         if read_id not in read_ids:
                             data_dict[read_id] = f[tx_id][read_id]['events'][:]
                             read_ids += [read_id]
-            if len(read_ids) > read_count_min:
+            if (len(read_ids) >= read_count_min) and (len(read_ids) >= read_count_max):
                 task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
                 gene_ids_processed += [gene_id]
 
@@ -350,6 +351,8 @@ def main():
     ensembl_version = args.ensembl
     gt_mapping_dir = args.mapping
     read_count_min = args.read_count_min
+    read_count_max = args.read_count_max
+
 
     misc.makedirs(out_dir) #todo: check every level.
     
@@ -366,7 +369,7 @@ def main():
         df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
 
     # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
-    parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min)
+    parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max)
 
 if __name__ == '__main__':
     """
