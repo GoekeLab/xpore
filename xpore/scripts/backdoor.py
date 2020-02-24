@@ -445,7 +445,7 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (0)
-    parallel_reformat_eventalign(data_dir,out_dir,n_processes)
+    # parallel_reformat_eventalign(data_dir,out_dir,n_processes)
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
     # parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)

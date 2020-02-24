@@ -16,7 +16,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # Required arguments
-    parser.add_argument('--config_filepath', dest='config_filepath', help='Specify.',required=True)
+    parser.add_argument('--config', dest='config', help='Specify.',required=True)
 
     # Optional arguments
     parser.add_argument('--n_processes', dest='n_processes', help='Specify the number of processes.',type=int,default=1)
@@ -84,7 +84,7 @@ def main():
     args = get_args()
     
     n_processes = args.n_processes       
-    config_filepath = args.config_filepath
+    config_filepath = args.config
     save_models = args.save_models
     save_table = args.save_table
 
@@ -181,6 +181,6 @@ def main():
 if __name__ == '__main__':
     """
     Usage:
-        xpore-diffmod --config_filepath --n_processes --save_table
+        xpore-diffmod --config --n_processes --save_table
     """
     main()
