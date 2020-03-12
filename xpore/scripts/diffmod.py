@@ -77,8 +77,6 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
     # Logging
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(idx + '\n')
-
-
                         
 def main():
     args = get_args()
@@ -135,27 +133,25 @@ def main():
         f_data[run_name] = open(os.path.join(paths['data_dir'],run_name,'dataprep','data.json'),'r') # todo
         
     # Load tasks into task_queue.
-    gene_ids = helper.get_gene_ids(config.filepath)
+    # gene_ids = helper.get_gene_ids(config.filepath)
 #    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
     # gene_ids = ['ENSG00000159111']
+    gene_ids = helper.get_gene_ids(f_index,info)
+    print(len(gene_ids),'genes to be testing ...')
+    
     for idx in gene_ids:
-        skip = False
         data_dict = dict()
         for run_name in info['run_names']:
-            ## todo: cleanup
             try:
                 pos_start,pos_end = f_index[run_name][idx]
             except KeyError:
-                skip = True
+                data_dict[run_name] = None
             else:
-            ##
                 f_data[run_name].seek(pos_start,0)
                 json_str = f_data[run_name].read(pos_end-pos_start)
                 json_str = '{%s}' %json_str
                 data_dict[run_name] = json.loads(json_str) # A data dict for each gene.
                 
-        if skip: # todo: cleanup
-            continue
         # tmp
         out_paths['model_filepath'] = os.path.join(paths['out_dir'],'models','%s.hdf5' %idx)
         #

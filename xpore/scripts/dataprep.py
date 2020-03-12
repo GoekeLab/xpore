@@ -185,7 +185,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
-    for out_filetype in ['json','index','log']:
+    for out_filetype in ['json','index','log','readcount']:
         out_paths[out_filetype] = os.path.join(out_dir,'data.%s' %out_filetype)
         locks[out_filetype] = multiprocessing.Lock()
                 
@@ -195,6 +195,8 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
         f.write('"genes":{')
     with open(out_paths['index'],'w') as f:
         f.write('gene_id,start,end\n') # header
+    with open(out_paths['readcount'],'w') as f:
+        f.write('gene_id,n_reads\n') # header
     open(out_paths['log'],'w').close()
 
     # Create communication queues.
@@ -335,8 +337,14 @@ def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):
         json.dump(data, f)
         pos_end = f.tell()
         f.write(',')
+        
     with locks['index'], open(out_paths['index'],'a') as f:
         f.write('%s,%d,%d\n' %(gene_id,pos_start,pos_end))
+        
+    # with locks['readcount'], open(out_paths['readcount'],'a') as f:
+        # n_reads = len(data_dict)
+    #     f.write('%s,%d\n' %(gene_id,n_reads))
+        
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(log_str + '\n')
 

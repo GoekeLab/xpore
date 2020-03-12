@@ -1,6 +1,8 @@
 import multiprocessing
 import numpy
 import os
+import pandas
+from functools import reduce
 
 def decor_message(text,opt='simple'):
     text = text.upper()
@@ -14,39 +16,45 @@ def end_queue(task_queue,n_processes):
         task_queue.put(None)
     return task_queue
         
-def get_gene_ids(read_count_filepath,read_count_min=0,read_count_max=numpy.inf): #todo
-    df_read_count = pandas.read_csv(read_count_filepath)
-    cond = df_read_count['n_reads'] >= read_count_min
-    cond &= df_read_count['n_reads'] <= read_count_max
-    gene_ids = sorted(list(df_read_count.loc[cond,'g_id'].unique()))
-    return gene_ids
-
+def get_gene_ids(f_index,info): #todo
+    df_list = []
+    for condition_name in info['condition_names']:
+        run_names = info['cond2run_dict'][condition_name]
+        list_of_set_gene_ids = []
+        for run_name in run_names:
+            list_of_set_gene_ids += [set(f_index[run_name].keys())]
+        gene_ids = reduce(lambda x,y: x.intersection(y), list_of_set_gene_ids)
+        df_list += [pandas.DataFrame({'gene_ids':list(gene_ids),condition_name:[1]*len(gene_ids)})]
+    df_merged = reduce(lambda  left,right: pandas.merge(left,right,on=['gene_ids'], how='outer'), df_list).fillna(0).set_index('gene_ids')
+    return sorted(list(df_merged[df_merged.sum(axis=1) >= 2].index))
+    
 ## tmp: to remove
-def get_gene_ids(config_filepath): # arguments are not used.
-    import os,pandas
-    from ..diffmod.configurator import Configurator
-    # config_filepath = '/ploy_ont_workspace/github/experiments/Release_v1_0/config_manuscript/gmm_HEK293T-KO_HEK293T-WT_HEPG2-WT_K562-WT_A549-WT_MCF7-WT_reps_v01.ini'
-    config = Configurator(config_filepath) 
-    paths = config.get_paths()
-    info = config.get_info()
-    criteria = config.get_criteria() 
-    df_gt_ids = pandas.read_csv('/ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping_gt_ids.csv')    
-    gene_ids = set(df_gt_ids['g_id'].unique())
-    read_count_sum_min,read_count_sum_max = criteria['read_count_min'],criteria['read_count_max']
-    df_read_count = {}
-    for run_name in set(info['run_names']):
-        read_count_filepath = os.path.join(paths['data_dir'],run_name,'summary','read_count_per_gene.csv')
-        df_read_count[run_name] = pandas.read_csv(read_count_filepath).set_index('g_id') 
+# def get_gene_ids(config_filepath): # arguments are not used.
+#     import os,pandas
+#     from ..diffmod.configurator import Configurator
+#     # config_filepath = '/ploy_ont_workspace/github/experiments/Release_v1_0/config_manuscript/gmm_HEK293T-KO_HEK293T-WT_HEPG2-WT_K562-WT_A549-WT_MCF7-WT_reps_v01.ini'
+#     config = Configurator(config_filepath) 
+#     paths = config.get_paths()
+#     info = config.get_info()
+#     criteria = config.get_criteria() 
+#     df_gt_ids = pandas.read_csv('/ploy_ont_workspace/out/Release_v1_0/statCompare/data/mapping_gt_ids.csv')    
+#     gene_ids = set(df_gt_ids['g_id'].unique())
+#     read_count_sum_min,read_count_sum_max = criteria['read_count_min'],criteria['read_count_max']
+#     df_read_count = {}
+#     for run_name in set(info['run_names']):
+#         read_count_filepath = os.path.join(paths['data_dir'],run_name,'summary','read_count_per_gene.csv')
+#         df_read_count[run_name] = pandas.read_csv(read_count_filepath).set_index('g_id') 
 
-    for run_name in set(info['run_names']):
-        df_read_count[run_name].reset_index(inplace=True)
-        cond = df_read_count[run_name]['n_reads'] >= criteria['read_count_min']
-        cond &= df_read_count[run_name]['n_reads'] <= criteria['read_count_max']
-        gene_ids = gene_ids.intersection(set(df_read_count[run_name].loc[cond,'g_id'].values))
+#     for run_name in set(info['run_names']):
+#         df_read_count[run_name].reset_index(inplace=True)
+#         cond = df_read_count[run_name]['n_reads'] >= criteria['read_count_min']
+#         cond &= df_read_count[run_name]['n_reads'] <= criteria['read_count_max']
+#         gene_ids = gene_ids.intersection(set(df_read_count[run_name].loc[cond,'g_id'].values))
 
-    gene_ids = sorted(list(gene_ids))
-    return gene_ids
+#     gene_ids = sorted(list(gene_ids))
+#     return gene_ids
 ##
+
 class Consumer(multiprocessing.Process):
     """ For parallelisation """
     

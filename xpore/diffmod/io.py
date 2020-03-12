@@ -2,7 +2,7 @@ import numpy
 import h5py
 import os
 from tqdm import tqdm  # progress bar.
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 import itertools
 
 from ..utils import stats
@@ -25,43 +25,68 @@ def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_coun
     data_dict: dict of ...
         Data for a gene 
     """
+    
+    # Create all (pos,kmer) pairs from all runs.
     position_kmer_pairs = []
     for run_name in run_names: # data_dict[run_name][idx][position][kmer]
         pairs = []
-        for pos in data_dict[run_name][idx].keys():
-            for kmer in data_dict[run_name][idx][pos].keys():
-                pairs += [(pos,kmer)]                
-        position_kmer_pairs += [pairs]
+        if data_dict[run_name] is not None:
+            for pos in data_dict[run_name][idx].keys():
+                for kmer in data_dict[run_name][idx][pos].keys():
+                    pairs += [(pos,kmer)]                
+            position_kmer_pairs += [pairs]
 
     position_kmer_pairs = set(position_kmer_pairs[0]).intersection(*position_kmer_pairs)
 
     data = OrderedDict()
     for pos,kmer in position_kmer_pairs:  
         y, read_ids, condition_labels, run_labels = [], [], [], []
+        n_reads = defaultdict(list)
         for condition_name, run_name in zip(condition_names, run_names):
-            norm_means = data_dict[run_name][idx][pos][kmer]['norm_means']
-            n_reads = len(norm_means)
-            y += norm_means
-            read_ids += list(data_dict[run_name][idx][pos][kmer]['read_ids'][:])
-            condition_labels += [condition_name]*n_reads
-            run_labels += [run_name]*n_reads
+            if data_dict[run_name] is not None:
+                norm_means = data_dict[run_name][idx][pos][kmer]['norm_means']
+                n_reads_per_run = len(norm_means)
+                n_reads[condition_name] += [n_reads_per_run]
+                y += norm_means
+                read_ids += list(data_dict[run_name][idx][pos][kmer]['read_ids'][:])
+                condition_labels += [condition_name]*n_reads_per_run
+                run_labels += [run_name]*n_reads_per_run
 
         y = numpy.array(y)
         read_ids = numpy.array(read_ids)
         condition_labels = numpy.array(condition_labels)
         run_labels = numpy.array(run_labels)
-        if (len(y) == 0) or (len(set(condition_labels)) != len(set(condition_names))) or ( (not pooling) and (len(set(run_labels)) != len(set(run_names)))):
+        
+        # Filter those sites that don't have enough reads.
+        if len(y) == 0:  # no reads at all.
+            continue
+        conditions_incl = []
+        if pooling: # At the modelling step all the reads from the same condition will be combined.
+            for condition_name in set(condition_names):
+                if (sum(n_reads[condition_name]) >= min_count) or (sum(n_reads[condition_name]) >= max_count):
+                    conditions_incl += [condition_name]
+        else:
+            for condition_name in set(condition_names):
+                if (numpy.array(n_reads[condition_name]) >= min_count).all() or (numpy.array(n_reads[condition_name]) >= max_count).all():
+                    conditions_incl += [condition_name]
+            
+        if len(conditions_incl) < 2:
             continue
 
+        # if (len(set(condition_labels)) != len(set(condition_names))) or ( (not pooling) and (len(set(run_labels)) != len(set(run_names)))):
+        #     continue
+
+#         if pooling:
+#             if (x.sum(axis=0) < min_count).any() or (x.sum(axis=0) > max_count).any():
+#                 continue
+
+#         else: 
+#             if (r.sum(axis=0) < min_count).any() or (r.sum(axis=0) > max_count).any():
+#                 continue
+
+        # Get dummies
         x, condition_names_dummies = get_dummies(condition_labels)
         r, run_names_dummies = get_dummies(run_labels)
-        if pooling:
-            if (x.sum(axis=0) < min_count).any() or (x.sum(axis=0) > max_count).any():
-                continue
-
-        else: 
-            if (r.sum(axis=0) < min_count).any() or (r.sum(axis=0) > max_count).any():
-                continue
 
         key = (idx, pos, kmer)
 
@@ -177,12 +202,15 @@ def get_result_table_header(cond2run_dict):
     ###
 
     return header
+
 def get_ordered_condition_run_names(cond2run_dict):
     condition_names = sorted(list(set(cond2run_dict.keys())))
     run_names = sorted(list(set(sum(list(cond2run_dict.values()), []))))
     return condition_names,run_names
 
-def generate_result_table(models, cond2run_dict):  # per gene/transcript
+# def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
+
+def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
     """
     Generate a table containing learned model parameters and statistic tests. methods['pooling'] = False
 
@@ -202,7 +230,7 @@ def generate_result_table(models, cond2run_dict):  # per gene/transcript
     """
 
     ###
-    condition_names,run_names = get_ordered_condition_run_names(cond2run_dict)
+    condition_names,run_names = get_ordered_condition_run_names(cond2run_dict) # information from the config file used for modelling.
     ###
 
     ###
@@ -229,32 +257,38 @@ def generate_result_table(models, cond2run_dict):  # per gene/transcript
         stats_pairwise = []
         for cond1, cond2 in itertools.combinations(condition_names, 2):
             runs1, runs2 = cond2run_dict[cond1], cond2run_dict[cond2]
-            w_cond1 = w[numpy.isin(model_group_names, runs1), 0].flatten()
-            w_cond2 = w[numpy.isin(model_group_names, runs2), 0].flatten()
-            n_cond1 = coverage[numpy.isin(model_group_names, runs1)]
-            n_cond2 = coverage[numpy.isin(model_group_names, runs2)]
+            if any(r in model_group_names for r in runs1) and any(r in model_group_names for r in runs2):
+                w_cond1 = w[numpy.isin(model_group_names, runs1), 0].flatten()
+                w_cond2 = w[numpy.isin(model_group_names, runs2), 0].flatten()
+                n_cond1 = coverage[numpy.isin(model_group_names, runs1)]
+                n_cond2 = coverage[numpy.isin(model_group_names, runs2)]
 
-            z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
-            ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
-            abs_z_score = abs(z_score)
+                z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
+                ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
+                abs_z_score = abs(z_score)
 
-            stats_pairwise += [p_ws, ws_mean_diff, abs_z_score]
+                stats_pairwise += [p_ws, ws_mean_diff, abs_z_score]
+            else:
+                stats_pairwise += [None, None, None]
 
         if len(condition_names) > 2:
             ### calculate stats_one_vs_all
             stats_one_vs_all = []
             for condition_name in condition_names:
                 runs1 = cond2run_dict[condition_name]
-                w_cond1 = w[numpy.isin(model_group_names, runs1), 0].flatten()
-                w_cond2 = w[~numpy.isin(model_group_names, runs1), 0].flatten()
-                n_cond1 = coverage[numpy.isin(model_group_names, runs1)]
-                n_cond2 = coverage[~numpy.isin(model_group_names, runs1)]
+                if any(r in model_group_names for r in runs1):
+                    w_cond1 = w[numpy.isin(model_group_names, runs1), 0].flatten()
+                    w_cond2 = w[~numpy.isin(model_group_names, runs1), 0].flatten()
+                    n_cond1 = coverage[numpy.isin(model_group_names, runs1)]
+                    n_cond2 = coverage[~numpy.isin(model_group_names, runs1)]
 
-                z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
-                ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
-                abs_z_score = abs(z_score)
+                    z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
+                    ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
+                    abs_z_score = abs(z_score)
 
-                stats_one_vs_all += [p_ws, ws_mean_diff, abs_z_score]
+                    stats_one_vs_all += [p_ws, ws_mean_diff, abs_z_score]
+                else:
+                    stats_one_vs_all += [None, None, None]
 
         ### lower, higher clusters
         w_min = w0
@@ -263,10 +297,15 @@ def generate_result_table(models, cond2run_dict):  # per gene/transcript
             sigma2 = sigma2[::-1]
             w_min = 1-w0
         ###
-        w_min_ordered, coverage_ordered = [], []
+        w_min_ordered, coverage_ordered = [], [] # to be ordered by headers.
         for run_name in run_names:
-            w_min_ordered += list(w_min[numpy.isin(model_group_names, run_name)])
-            coverage_ordered += list(coverage[numpy.isin(model_group_names, run_name)])
+            if run_name in model_group_names:
+                w_min_ordered += list(w_min[numpy.isin(model_group_names, run_name)])
+                coverage_ordered += list(coverage[numpy.isin(model_group_names, run_name)])
+            else:
+                w_min_ordered += [None]
+                coverage_ordered += [None]
+                
         ###
         ### prepare values to write
         row = [idx, position, kmer] + list(mu) + list(sigma2) + [p_overlap]
