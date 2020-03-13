@@ -47,7 +47,7 @@ def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_coun
                 norm_means = data_dict[run_name][idx][pos][kmer]['norm_means']
                 n_reads_per_run = len(norm_means)
                 # If not enough reads, don't include them.
-                if (n_reads_per_run >= min_count) and (n_reads_per_run <= max_count):
+                if (n_reads_per_run < min_count) and (n_reads_per_run > max_count):
                     continue
                 #
                 n_reads[condition_name] += [n_reads_per_run]
