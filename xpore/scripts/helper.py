@@ -23,7 +23,8 @@ def get_gene_ids(f_index,info): #todo
         list_of_set_gene_ids = []
         for run_name in run_names:
             list_of_set_gene_ids += [set(f_index[run_name].keys())]
-        gene_ids = reduce(lambda x,y: x.intersection(y), list_of_set_gene_ids)
+        # gene_ids = reduce(lambda x,y: x.intersection(y), list_of_set_gene_ids)
+        gene_ids = reduce(lambda x,y: x.union(y), list_of_set_gene_ids)
         df_list += [pandas.DataFrame({'gene_ids':list(gene_ids),condition_name:[1]*len(gene_ids)})]
     df_merged = reduce(lambda  left,right: pandas.merge(left,right,on=['gene_ids'], how='outer'), df_list).fillna(0).set_index('gene_ids')
     return sorted(list(df_merged[df_merged.sum(axis=1) >= 2].index))
