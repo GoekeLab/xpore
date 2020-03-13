@@ -18,7 +18,7 @@ def get_dummies(x):
     return numpy.array(X).T, labels
 
 
-def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_count=3000,pooling=False):
+def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_count=3000): #,pooling=False
     """
     Parameters
     ----------
@@ -46,6 +46,10 @@ def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_coun
             if data_dict[run_name] is not None:
                 norm_means = data_dict[run_name][idx][pos][kmer]['norm_means']
                 n_reads_per_run = len(norm_means)
+                # If not enough reads, don't include them.
+                if (n_reads_per_run >= min_count) and (n_reads_per_run <= max_count):
+                    continue
+                #
                 n_reads[condition_name] += [n_reads_per_run]
                 y += norm_means
                 read_ids += list(data_dict[run_name][idx][pos][kmer]['read_ids'][:])
@@ -61,14 +65,14 @@ def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_coun
         if len(y) == 0:  # no reads at all.
             continue
         conditions_incl = []
-        if pooling: # At the modelling step all the reads from the same condition will be combined.
-            for condition_name in set(condition_names):
-                if (sum(n_reads[condition_name]) >= min_count) or (sum(n_reads[condition_name]) >= max_count):
-                    conditions_incl += [condition_name]
-        else:
-            for condition_name in set(condition_names):
-                if (numpy.array(n_reads[condition_name]) >= min_count).all() or (numpy.array(n_reads[condition_name]) >= max_count).all():
-                    conditions_incl += [condition_name]
+        # if pooling: # At the modelling step all the reads from the same condition will be combined.
+        #     for condition_name in set(condition_names):
+        #         if (sum(n_reads[condition_name]) >= min_count) and (sum(n_reads[condition_name]) <= max_count):
+        #             conditions_incl += [condition_name]
+        # else:
+        for condition_name in set(condition_names):
+            if (numpy.array(n_reads[condition_name]) >= min_count).any() and (numpy.array(n_reads[condition_name]) <= max_count).any():
+                conditions_incl += [condition_name]
             
         if len(conditions_incl) < 2:
             continue
@@ -81,7 +85,7 @@ def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_coun
 #                 continue
 
 #         else: 
-#             if (r.sum(axis=0) < min_count).any() or (r.sum(axis=0) > max_count).any():
+#             if (r.sum(axis=0) < min_count).any() or (r.sum(axis=0) >  ).any():
 #                 continue
 
         # Get dummies
@@ -212,7 +216,7 @@ def get_ordered_condition_run_names(cond2run_dict):
 
 def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
     """
-    Generate a table containing learned model parameters and statistic tests. methods['pooling'] = False
+    Generate a table containing learned model parameters and statistic tests.
 
     Parameters
     ----------

@@ -30,7 +30,7 @@ def get_args():
 def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, out_paths, save_models, save_table,locks):
     """
     """
-    data = io.load_data(idx,data_dict,info['condition_names'],info['run_names'],min_count=criteria['read_count_min'],max_count=criteria['read_count_max'],pooling=False)
+    data = io.load_data(idx,data_dict,info['condition_names'],info['run_names'],min_count=criteria['read_count_min'],max_count=criteria['read_count_max']) #,pooling=False
     models = dict()
     for key,data_at_pos in data.items():
         idx, pos, kmer = key
