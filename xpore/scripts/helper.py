@@ -27,7 +27,7 @@ def get_gene_ids(f_index,info): #todo
         gene_ids = reduce(lambda x,y: x.union(y), list_of_set_gene_ids)
         df_list += [pandas.DataFrame({'gene_ids':list(gene_ids),condition_name:[1]*len(gene_ids)})]
     df_merged = reduce(lambda  left,right: pandas.merge(left,right,on=['gene_ids'], how='outer'), df_list).fillna(0).set_index('gene_ids')
-    return sorted(list(df_merged[df_merged.sum(axis=1) >= 2].index))
+    return sorted(list(df_merged[df_merged.sum(axis=1) >= 2].index)) # At least two conditions.
     
 ## tmp: to remove
 # def get_gene_ids(config_filepath): # arguments are not used.

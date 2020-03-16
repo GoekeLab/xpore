@@ -85,6 +85,7 @@ def main():
     config_filepath = args.config
     save_models = args.save_models
     save_table = args.save_table
+    resume = args.resume
 
     config = Configurator(config_filepath) 
     paths = config.get_paths()
@@ -110,10 +111,13 @@ def main():
 
     # Writing the starting of the files.
     if save_table:
-        with open(out_paths['table'],'w') as f:
-            csv.writer(f,delimiter=',').writerow(io.get_result_table_header(info['cond2run_dict']))
-        with open(out_paths['log'],'w') as f:
-            f.write(helper.decor_message('diffmod'))
+        if resume:
+            gene_ids_done = [line for line in open(out_paths['log'],'r')]                
+        else:
+            with open(out_paths['table'],'w') as f:
+                csv.writer(f,delimiter=',').writerow(io.get_result_table_header(info['cond2run_dict']))
+            with open(out_paths['log'],'w') as f:
+                f.write(helper.decor_message('diffmod'))
 
 
     # Create and start consumers.
