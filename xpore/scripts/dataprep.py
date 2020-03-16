@@ -6,8 +6,10 @@ import multiprocessing
 import h5py
 import csv
 import json
+import subprocess
 import pysam #0-based leftmost coordinate
 from pyensembl import EnsemblRelease
+from pyensembl import Genome
 from tqdm import tqdm
 from operator import itemgetter
 from collections import defaultdict
@@ -33,7 +35,8 @@ def get_args():
     parser.add_argument('--read_count_min', dest='read_count_min', help='Minimum of read counts per gene.',type=int, default=10)
     parser.add_argument('--read_count_max', dest='read_count_max', help='Maximum of read counts per gene.',type=int, default=5000)
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
-
+    parser.add_argument('--gtf', dest='ensembl_gtf', help='File path to ensembl gtf file', default=None)
+    parser.add_argument('--fasta', dest='ensembl_fa', help='File path to ensembl fasta file', default=None)
 
     
     return parser.parse_args()
@@ -47,16 +50,22 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     keys = ['read_index','contig','position','reference_kmer'] # for groupby
     eventalign_result['length'] = pandas.to_numeric(eventalign_result['end_idx'])-pandas.to_numeric(eventalign_result['start_idx'])
     eventalign_result['sum_norm_mean'] = pandas.to_numeric(eventalign_result['event_level_mean']) * eventalign_result['length']
+    eventalign_result['sum_norm_std'] = pandas.to_numeric(eventalign_result['event_stdv']) * eventalign_result['length']
+    eventalign_result['sum_dwell_time'] = pandas.to_numeric(eventalign_result['event_length']) * eventalign_result['length']
 
     eventalign_result = eventalign_result.groupby(keys)  
     sum_norm_mean = eventalign_result['sum_norm_mean'].sum() 
+    sum_norm_std = eventalign_result["sum_norm_std"].sum()
+    sum_dwell_time = eventalign_result["sum_dwell_time"].sum()
+
     start_idx = eventalign_result['start_idx'].min()
     end_idx = eventalign_result['end_idx'].max()
     total_length = eventalign_result['length'].sum()
 
     eventalign_result = pandas.concat([start_idx,end_idx],axis=1)
-    eventalign_result['norm_mean'] = sum_norm_mean/total_length
-
+    eventalign_result['norm_mean'] = sum_norm_mean / total_length
+    eventalign_result["norm_std"] = sum_norm_std / total_length
+    eventalign_result["dwell_time"] = sum_dwell_time / total_length
     eventalign_result.reset_index(inplace=True)
 
     eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]
@@ -145,11 +154,28 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes):
     with open(out_paths['log'],'a+') as f:
         f.write(helper.decor_message('successfully finished'))
 
-def count_reads(version,bamtx_filepath,out_dir):
+def count_reads(version,bamtx_filepath,out_dir, ensembl_gtf=None, ensembl_fa=None):
     """
     Counts number of aligned reads from bamtx file. Returns a dataframe of ['chr','gene_id','gene_name','transcript_id','n_reads'].
     """
-    grch38 = EnsemblRelease(version) # human reference genome GRCh38 release 91 used in the ont mapping.    
+    if (ensembl_gtf is not None) and (ensembl_fa is not None):
+        db_file = ensembl_gtf.replace("gtf", "db")
+        if not os.path.exists(db_file):
+            print("db file is not detected, installing via pyensembl")
+            install_str =  "pyensembl install --reference-name GRCh38 --annotation-name ascd --gtf %.s --transcript-fasta %.s" % (ensembl_gtf, ensembl_fa)
+            process = subprocess.Popen(install_str.split(), stdout=subprocess.PIPE)
+            output, error = process.communicate()
+            print(output)
+            if error is not None:
+                print(error)
+                raise ValueError("Error when installing pyensembl db")
+
+        grch = Genome(reference_name='custom_reference', annotation_name='my_genome_features',
+                      gtf_path_or_url=ensembl_gtf, transcript_fasta_paths_or_urls=ensembl_fa)
+        
+    else:
+        grch = EnsemblRelease(version) # human reference genome GRCh38 release 91 used in the ont mapping.
+
     bam_file = pysam.AlignmentFile(bamtx_filepath, "rb")
 
     rows = []
@@ -162,7 +188,7 @@ def count_reads(version,bamtx_filepath,out_dir):
             continue
         tx_id = contig.split('.')[0]     
         try:
-            tx = grch38.transcript_by_id(tx_id)
+            tx = grch.transcript_by_id(tx_id)
         except ValueError as val_err:
             print(val_err)
             profile['contig_not_found'] += 1
@@ -170,7 +196,7 @@ def count_reads(version,bamtx_filepath,out_dir):
         else:
             g_id = tx.gene_id
             chromosome_id = tx.contig
-            g_name = grch38.gene_name_of_gene_id(g_id)
+            g_name = grch.gene_name_of_gene_id(g_id)
             rows += [[chromosome_id,g_id,g_name,tx_id,n_reads]]
 
     df_count = pandas.DataFrame.from_records(rows,columns=['chr','gene_id','gene_name','transcript_id','n_reads'])
@@ -357,6 +383,8 @@ def main():
     bamtx_filepath = args.bamtx
     out_dir = args.out_dir
     ensembl_version = args.ensembl
+    ensembl_gtf = args.gtf
+    ensembl_fa = args.fasta
     gt_mapping_dir = args.mapping
     read_count_min = args.read_count_min
     read_count_max = args.read_count_max
@@ -374,7 +402,7 @@ def main():
     if os.path.exists(read_count_filepath):
         df_count = pandas.read_csv(read_count_filepath)
     else:
-        df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
+        df_count = count_reads(ensembl_version,bamtx_filepath,out_dir,ensembl_gtf=ensembl_gtf, ensembl_fa=ensembl_fa)
 
     # (3 for xpore) Create a .json file, where the info of all reads are stored per position, for modelling.
     # parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max)
