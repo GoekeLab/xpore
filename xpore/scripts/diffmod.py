@@ -111,13 +111,13 @@ def main():
 
     # Writing the starting of the files.
     if save_table:
-        if resume:
-            gene_ids_done = [line for line in open(out_paths['log'],'r')]                
-        else:
+        if (not resume) or (os.path.exists(out_paths['table'])):
             with open(out_paths['table'],'w') as f:
                 csv.writer(f,delimiter=',').writerow(io.get_result_table_header(info['cond2run_dict']))
             with open(out_paths['log'],'w') as f:
                 f.write(helper.decor_message('diffmod'))
+        else:
+            gene_ids_done = [line for line in open(out_paths['log'],'r')]                
 
 
     # Create and start consumers.
