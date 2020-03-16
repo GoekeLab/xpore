@@ -110,6 +110,7 @@ def main():
     task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
 
     # Writing the starting of the files.
+    gene_ids_done = []
     if save_table:
         if (not resume) or (os.path.exists(out_paths['table'])):
             with open(out_paths['table'],'w') as f:
