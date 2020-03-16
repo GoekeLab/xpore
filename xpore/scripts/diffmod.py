@@ -144,6 +144,9 @@ def main():
     print(len(gene_ids),'genes to be testing ...')
     
     for idx in gene_ids:
+        if resume and (idx in gene_ids_done):
+            continue
+            
         data_dict = dict()
         for run_name in info['run_names']:
             try:
