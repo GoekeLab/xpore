@@ -112,7 +112,7 @@ def main():
     # Writing the starting of the files.
     gene_ids_done = []
     if save_table:
-        if resume and os.path.exists(out_paths['log'])
+        if resume and os.path.exists(out_paths['log']):
             gene_ids_done = [line for line in open(out_paths['log'],'r')]                
         else:
             with open(out_paths['table'],'w') as f:
