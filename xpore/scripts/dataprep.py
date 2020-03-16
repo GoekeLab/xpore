@@ -383,8 +383,8 @@ def main():
     bamtx_filepath = args.bamtx
     out_dir = args.out_dir
     ensembl_version = args.ensembl
-    ensembl_gtf = args.gtf
-    ensembl_fa = args.fasta
+    ensembl_gtf = args.ensembl_gtf
+    ensembl_fa = args.ensembl_fasta
     gt_mapping_dir = args.mapping
     read_count_min = args.read_count_min
     read_count_max = args.read_count_max
