@@ -64,9 +64,9 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     # eventalign_result = misc.str_encode(eventalign_result)
     eventalign_result['read_id'] = [read_name]*len(eventalign_result)
 
-    # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx']
+    features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','norm_std','dwell_time','start_idx','end_idx']
     # features_dtype = numpy.dtype([('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'), ('end_idx', '<i8')])
-    features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean']
+    # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean'] #original features that Ploy's using.
 
     df_events_per_read = eventalign_result[features]
     # print(df_events_per_read.head())
@@ -376,8 +376,8 @@ def main():
     else:
         df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
 
-    # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
-    parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max)
+    # (3 for xpore) Create a .json file, where the info of all reads are stored per position, for modelling.
+    # parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max)
 
 if __name__ == '__main__':
     """
