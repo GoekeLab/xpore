@@ -193,7 +193,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
     gene_ids_done = []
     if resume and os.path.exists(out_paths['index']):
         df_index = pandas.read_csv(out_paths['index'],sep=',')
-        gene_ids_done = list(df_index['gene_ids'].unique())
+        gene_ids_done = list(df_index['gene_id'].unique())
     else:
         with open(out_paths['json'],'w') as f:
             f.write('{\n')
