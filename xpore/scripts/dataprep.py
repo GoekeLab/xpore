@@ -181,7 +181,7 @@ def count_reads(version,bamtx_filepath,out_dir):
     # print(profile)
     return df_count
     
-def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max):
+def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -190,14 +190,19 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
         locks[out_filetype] = multiprocessing.Lock()
                 
     # Writing the starting of the files.
-    with open(out_paths['json'],'w') as f:
-        f.write('{\n')
-        f.write('"genes":{')
-    with open(out_paths['index'],'w') as f:
-        f.write('gene_id,start,end\n') # header
-    with open(out_paths['readcount'],'w') as f:
-        f.write('gene_id,n_reads\n') # header
-    open(out_paths['log'],'w').close()
+    gene_ids_done = []
+    if resume and os.path.exists(out_paths['index']):
+        df_index = pandas.read_csv(out_paths['index'],sep=',')
+        gene_ids_done = list(df_index['gene_ids'].unique())
+    else:
+        with open(out_paths['json'],'w') as f:
+            f.write('{\n')
+            f.write('"genes":{')
+        with open(out_paths['index'],'w') as f:
+            f.write('gene_id,start,end\n') # header
+        with open(out_paths['readcount'],'w') as f:
+            f.write('gene_id,n_reads\n') # header
+        open(out_paths['log'],'w').close()
 
     # Create communication queues.
     task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
@@ -213,7 +218,9 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
     gene_ids = df_count.index
     gene_ids_processed = []
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
-        for gene_id in gene_ids:            
+        for gene_id in gene_ids:
+            if resume and (gene_id in gene_ids_done):
+                continue
             gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id) # no mapping for gene_id
             if not os.path.exists(gt_mapping_filepath):
                 continue
@@ -360,6 +367,7 @@ def main():
     gt_mapping_dir = args.mapping
     read_count_min = args.read_count_min
     read_count_max = args.read_count_max
+    resume = args.resume
 
 
     misc.makedirs(out_dir) #todo: check every level.
@@ -377,7 +385,7 @@ def main():
         df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
 
     # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
-    parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max)
+    parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max,resume)
 
 if __name__ == '__main__':
     """
