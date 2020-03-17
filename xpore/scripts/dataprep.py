@@ -98,6 +98,46 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
         f.write('%s\n' %(read_name))    
 
 
+def prepare_for_inference(tx,read_task,kmers,out_dir,locks):
+    reads = numpy.concatenate(read_task)
+    
+    with locks['log'], open(os.path.join(out_dir, "prepare_for_inference.log"),'a') as f:
+        f.write('%s\n' %(tx))    
+
+def parallel_prepare_for_inference(eventalign_filepath,out_dir,n_processes):
+    # Create output paths and locks.
+    locks = {'log': multiprocessing.Lock()}
+    log_path = os.path.join(out_dir, "prepare_for_inference.log")
+    # Create empty files for logs.
+    open(log_path,'w').close()
+
+    # Create communication queues.
+    task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
+
+    # Create and start consumers.
+    consumers = [helper.Consumer(task_queue=task_queue,task_function=prepare_for_inference,locks=locks) for i in range(n_processes)]
+    for p in consumers:
+        p.start()
+        
+    ## Load tasks into task_queue. A task is a read information from a specific site.
+
+    with h5py.File(eventalign_filepath, 'r') as f:
+        for tx in f:
+            read_task = []
+            for read in f[tx]:
+                read_task.append(f[tx][read]['events'][:])
+            task_queue.put((tx, read_task, out_dir))
+
+    # Put the stop task into task_queue.
+    task_queue = helper.end_queue(task_queue,n_processes)
+
+    # Wait for all of the tasks to finish.
+    task_queue.join()
+    
+    with open(log_path,'a+') as f:
+        f.write(helper.decor_message('successfully finished'))
+
+
 def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes):
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
