@@ -47,10 +47,10 @@ def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_coun
                 norm_means = data_dict[run_name][idx][pos][kmer]['norm_means']
                 n_reads_per_run = len(norm_means)
                 # In case of pooling==False, if not enough reads, don't include them. 
-                print(run_name,n_reads_per_run)
                 if (not pooling) and ((n_reads_per_run < min_count) or (n_reads_per_run > max_count)):
                     continue
                 #
+                print(run_name,n_reads_per_run)
                 n_reads[condition_name] += [n_reads_per_run]
                 y += norm_means
                 read_ids += list(data_dict[run_name][idx][pos][kmer]['read_ids'][:])
