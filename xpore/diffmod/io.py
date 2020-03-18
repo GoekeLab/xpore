@@ -18,7 +18,7 @@ def get_dummies(x):
     return numpy.array(X).T, labels
 
 
-def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_count=3000): #,pooling=False
+def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_count=3000, pooling=False): 
     """
     Parameters
     ----------
@@ -65,28 +65,17 @@ def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_coun
         if len(y) == 0:  # no reads at all.
             continue
         conditions_incl = []
-        # if pooling: # At the modelling step all the reads from the same condition will be combined.
-        #     for condition_name in set(condition_names):
-        #         if (sum(n_reads[condition_name]) >= min_count) and (sum(n_reads[condition_name]) <= max_count):
-        #             conditions_incl += [condition_name]
-        # else:
-        for condition_name in set(condition_names):
-            if (numpy.array(n_reads[condition_name]) >= min_count).any() and (numpy.array(n_reads[condition_name]) <= max_count).any():
-                conditions_incl += [condition_name]
+        if pooling: # At the modelling step all the reads from the same condition will be combined.
+            for condition_name in set(condition_names):
+                if (sum(n_reads[condition_name]) >= min_count) and (sum(n_reads[condition_name]) <= max_count):
+                    conditions_incl += [condition_name]
+        else:
+            for condition_name in set(condition_names):
+                if (numpy.array(n_reads[condition_name]) >= min_count).any() and (numpy.array(n_reads[condition_name]) <= max_count).any():
+                    conditions_incl += [condition_name]
             
         if len(conditions_incl) < 2:
             continue
-
-        # if (len(set(condition_labels)) != len(set(condition_names))) or ( (not pooling) and (len(set(run_labels)) != len(set(run_names)))):
-        #     continue
-
-#         if pooling:
-#             if (x.sum(axis=0) < min_count).any() or (x.sum(axis=0) > max_count).any():
-#                 continue
-
-#         else: 
-#             if (r.sum(axis=0) < min_count).any() or (r.sum(axis=0) >  ).any():
-#                 continue
 
         # Get dummies
         x, condition_names_dummies = get_dummies(condition_labels)
@@ -180,7 +169,7 @@ def load_models(model_filepath):  # per gene/transcript
 
     return models  # {(idx,position,kmer): GMM obj}
 
-def get_result_table_header(cond2run_dict):
+def get_result_table_header(cond2run_dict,pooling=False):
     condition_names,run_names = get_ordered_condition_run_names(cond2run_dict)
     ### stats headers
     stats_pairwise = []
@@ -194,10 +183,15 @@ def get_result_table_header(cond2run_dict):
     header = ['idx', 'position', 'kmer', 'mu_min', 'mu_max', 'sigma2_min', 'sigma2_max']
     header += ['p_overlap']
     header += ['x_x1', 'y_x1', 'x_x2', 'y_x2']
-    for run_name in run_names:
-        header += ['w_min_%s' % run_name]
-    for run_name in run_names:
-        header += ['coverage_%s' % run_name]
+    
+    if pooling:
+        names = condition_names
+    else:
+        names = run_names
+    for name in names:
+        header += ['w_min_%s' % name]
+    for name in names:
+        header += ['coverage_%s' % name]
 
     ###
     header += stats_pairwise
@@ -255,17 +249,18 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
 
         p_overlap, list_cdf_at_intersections = stats.calc_prob_overlapping(mu, sigma2)
 
-        model_group_names = model.nodes['x'].params['group_names']
+        model_group_names = model.nodes['x'].params['group_names'] #condition_names if pooling, run_names otherwise.
 
         ### calculate stats_pairwise
         stats_pairwise = []
         for cond1, cond2 in itertools.combinations(condition_names, 2):
-            runs1, runs2 = cond2run_dict[cond1], cond2run_dict[cond2]
-            if any(r in model_group_names for r in runs1) and any(r in model_group_names for r in runs2):
-                w_cond1 = w[numpy.isin(model_group_names, runs1), 0].flatten()
-                w_cond2 = w[numpy.isin(model_group_names, runs2), 0].flatten()
-                n_cond1 = coverage[numpy.isin(model_group_names, runs1)]
-                n_cond2 = coverage[numpy.isin(model_group_names, runs2)]
+            if not model.method['pooling']:
+                cond1, cond2 = cond2run_dict[cond1], cond2run_dict[cond2]
+            if any(r in model_group_names for r in cond1) and any(r in model_group_names for r in cond2):
+                w_cond1 = w[numpy.isin(model_group_names, cond1), 0].flatten()
+                w_cond2 = w[numpy.isin(model_group_names, cond2), 0].flatten()
+                n_cond1 = coverage[numpy.isin(model_group_names, cond1)]
+                n_cond2 = coverage[numpy.isin(model_group_names, cond2)]
 
                 z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
                 ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
@@ -278,13 +273,14 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
         if len(condition_names) > 2:
             ### calculate stats_one_vs_all
             stats_one_vs_all = []
-            for condition_name in condition_names:
-                runs1 = cond2run_dict[condition_name]
+            for cond in condition_names:
+                if not model.method['pooling']:
+                    cond = cond2run_dict[cond]
                 if any(r in model_group_names for r in runs1):
-                    w_cond1 = w[numpy.isin(model_group_names, runs1), 0].flatten()
-                    w_cond2 = w[~numpy.isin(model_group_names, runs1), 0].flatten()
-                    n_cond1 = coverage[numpy.isin(model_group_names, runs1)]
-                    n_cond2 = coverage[~numpy.isin(model_group_names, runs1)]
+                    w_cond1 = w[numpy.isin(model_group_names, cond), 0].flatten()
+                    w_cond2 = w[~numpy.isin(model_group_names, cond), 0].flatten()
+                    n_cond1 = coverage[numpy.isin(model_group_names, cond)]
+                    n_cond2 = coverage[~numpy.isin(model_group_names, cond)]
 
                     z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
                     ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
@@ -301,11 +297,15 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
             sigma2 = sigma2[::-1]
             w_min = 1-w0
         ###
-        w_min_ordered, coverage_ordered = [], [] # to be ordered by headers.
-        for run_name in run_names:
-            if run_name in model_group_names:
-                w_min_ordered += list(w_min[numpy.isin(model_group_names, run_name)])
-                coverage_ordered += list(coverage[numpy.isin(model_group_names, run_name)])
+        w_min_ordered, coverage_ordered = [], [] # ordered by headers.        
+        if model.method['pooling']:
+            names = condition_names
+        else:
+            names = run_names
+        for name in names:
+            if name in model_group_names:
+                w_min_ordered += list(w_min[numpy.isin(model_group_names, name)])
+                coverage_ordered += list(coverage[numpy.isin(model_group_names, name)])
             else:
                 w_min_ordered += [None]
                 coverage_ordered += [None]

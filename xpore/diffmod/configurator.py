@@ -72,6 +72,7 @@ class Configurator(object):
         if 'gmm' in method['name']:
             method['max_iters'] = int(config_section_map(self.config, 'Method')['max_iters'])
             method['stopping_criteria'] = float(config_section_map(self.config, 'Method')['stopping_criteria'])
+            method['pooling'] = config_section_map(self.config,'Method')['pooling'] == 'True'
             # method['compute_elbo'] = config_section_map(self.config,'Method')['compute_elbo'] == 'True'
             # method['config']['verbose'] = config_section_map(self.config,'Method')['verbose'] == 'True'
         return method

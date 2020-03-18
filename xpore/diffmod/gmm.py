@@ -46,9 +46,13 @@ class GMM(object):
             # locations = kmeans.cluster_centers_.flatten()
 
             inits['nodes']['mu_tau'] = {'location': locations, 'lambda': priors['mu_tau']['lambda'], 'alpha': priors['mu_tau']['alpha'], 'beta': priors['mu_tau']['beta']}
-
-            inits['nodes']['x'] = {'group_names': data['run_names']}
-            data_node_x = data['r']
+            
+            if self.method['pooling']:
+                inits['nodes']['x'] = {'group_names': data['condition_names']}
+                data_node_x = data['x']
+            else:
+                inits['nodes']['x'] = {'group_names': data['run_names']}
+                data_node_x = data['r']
 
             # additional nodes for postprocessing analysis
             self.nodes['y_condition_names'] = Constant(data=data['y_condition_names'])

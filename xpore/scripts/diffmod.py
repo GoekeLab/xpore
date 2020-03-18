@@ -30,7 +30,7 @@ def get_args():
 def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, out_paths, save_models, save_table,locks):
     """
     """
-    data = io.load_data(idx,data_dict,info['condition_names'],info['run_names'],min_count=criteria['read_count_min'],max_count=criteria['read_count_max']) #,pooling=False
+    data = io.load_data(idx,data_dict,info['condition_names'],info['run_names'],min_count=criteria['read_count_min'],max_count=criteria['read_count_max'],pooling=method['pooling']) 
     models = dict()
     for key,data_at_pos in data.items():
         idx, pos, kmer = key
@@ -116,7 +116,7 @@ def main():
             gene_ids_done = [line for line in open(out_paths['log'],'r')]                
         else:
             with open(out_paths['table'],'w') as f:
-                csv.writer(f,delimiter=',').writerow(io.get_result_table_header(info['cond2run_dict']))
+                csv.writer(f,delimiter=',').writerow(io.get_result_table_header(info['cond2run_dict'],method['pooling']))
             with open(out_paths['log'],'w') as f:
                 f.write(helper.decor_message('diffmod'))
 
