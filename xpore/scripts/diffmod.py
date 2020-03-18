@@ -40,7 +40,10 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
         y_tau = 1./(data_at_pos['y'].std()**2)
 
         K = 2
-        group_names = sorted(info['run_names'])
+        if method['pooling']:
+            group_names = sorted(info['condition_names'])
+        else:
+            group_names = sorted(info['run_names'])
 
         ### Set up priors.
         priors = {'mu_tau':defaultdict(list),'w':dict()}
@@ -54,7 +57,7 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
         for k,v in priors['mu_tau'].items():
             priors['mu_tau'][k] = numpy.array(v)
         
-        priors['w']['concentration'] = numpy.ones([len(data_at_pos['run_names']),K])*1. #GK
+        priors['w']['concentration'] = numpy.ones([len(group_names),K])*1. #GK
         priors['w']['concentration'][:,0] = float(prior_params['concentration'][0])
         priors['w']['concentration'][:,1] = float(prior_params['concentration'][1])
         ###
