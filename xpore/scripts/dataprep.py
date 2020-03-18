@@ -255,27 +255,12 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes):
     with open(out_paths['log'],'a+') as f:
         f.write(helper.decor_message('successfully finished'))
 
-def count_reads(version,bamtx_filepath,out_dir, ensembl_gtf=None, ensembl_fa=None):
+def count_reads(version,bamtx_filepath,out_dir):
     """
     Counts number of aligned reads from bamtx file. Returns a dataframe of ['chr','gene_id','gene_name','transcript_id','n_reads'].
     """
-    if (ensembl_gtf is not None) and (ensembl_fa is not None):
-        db_file = ensembl_gtf.replace("gtf", "db")
-        if not os.path.exists(db_file):
-            print("db file is not detected, installing via pyensembl")
-            install_str =  "pyensembl install --reference-name GRCh38 --annotation-name ascd --gtf %.s --transcript-fasta %.s" % (ensembl_gtf, ensembl_fa)
-            process = subprocess.Popen(install_str.split(), stdout=subprocess.PIPE)
-            output, error = process.communicate()
-            print(output)
-            if error is not None:
-                print(error)
-                raise ValueError("Error when installing pyensembl db")
 
-        grch = Genome(reference_name='custom_reference', annotation_name='my_genome_features',
-                      gtf_path_or_url=ensembl_gtf, transcript_fasta_paths_or_urls=ensembl_fa)
-        
-    else:
-        grch = EnsemblRelease(version) # human reference genome GRCh38 release 91 used in the ont mapping.
+    grch38 = EnsemblRelease(version) # human reference genome GRCh38 release 91 used in the ont mapping.
 
     bam_file = pysam.AlignmentFile(bamtx_filepath, "rb")
 
@@ -289,7 +274,7 @@ def count_reads(version,bamtx_filepath,out_dir, ensembl_gtf=None, ensembl_fa=Non
             continue
         tx_id = contig.split('.')[0]     
         try:
-            tx = grch.transcript_by_id(tx_id)
+            tx = grch38.transcript_by_id(tx_id)
         except ValueError as val_err:
             print(val_err)
             profile['contig_not_found'] += 1
@@ -297,7 +282,7 @@ def count_reads(version,bamtx_filepath,out_dir, ensembl_gtf=None, ensembl_fa=Non
         else:
             g_id = tx.gene_id
             chromosome_id = tx.contig
-            g_name = grch.gene_name_of_gene_id(g_id)
+            g_name = grch38.gene_name_of_gene_id(g_id)
             rows += [[chromosome_id,g_id,g_name,tx_id,n_reads]]
 
     df_count = pandas.DataFrame.from_records(rows,columns=['chr','gene_id','gene_name','transcript_id','n_reads'])
