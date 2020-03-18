@@ -76,7 +76,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','norm_std','dwell_time','start_idx','end_idx']
     # features_dtype = numpy.dtype([('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'),
     #                               ('end_idx', '<i8')])
-    features_dtype='|S36, S15, <i8, <S5, <f8, <i8, <i8'
+    features_dtype='S36, S15, <i8, <S5, <f8, <i8, <i8'
     # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean'] #original features that Ploy's using.
 
     df_events_per_read = eventalign_result[features]
