@@ -50,7 +50,6 @@ def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_coun
                 if (not pooling) and ((n_reads_per_run < min_count) or (n_reads_per_run > max_count)):
                     continue
                 #
-                print(run_name,n_reads_per_run)
                 n_reads[condition_name] += [n_reads_per_run]
                 y += norm_means
                 read_ids += list(data_dict[run_name][idx][pos][kmer]['read_ids'][:])
@@ -75,7 +74,6 @@ def load_data(idx, data_dict, condition_names, run_names, min_count=30, max_coun
                 if (numpy.array(n_reads[condition_name]) >= min_count).any() and (numpy.array(n_reads[condition_name]) <= max_count).any():
                     conditions_incl += [condition_name]
                     
-        print(conditions_incl)
         if len(conditions_incl) < 2:
             continue
 
