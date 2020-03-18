@@ -74,7 +74,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     eventalign_result['read_id'] = [read_name]*len(eventalign_result)
 
     features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','norm_std','dwell_time','start_idx','end_idx']
-    features_dtype = numpy.dtype([('object', 'S36'), ('object', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'),
+    features_dtype = numpy.dtype([('read_id', 'object'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'),
                                   ('end_idx', '<i8')])
     # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean'] #original features that Ploy's using.
 
@@ -88,7 +88,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
         for tx_id,read_id in df_events_per_read.index.unique():
             df2write = df_events_per_read.loc[[tx_id,read_id],:].reset_index() 
             events = numpy.rec.fromrecords(misc.str_encode(df2write[features]),names=features) #,dtype=features_dtype
-
+            
             hf_tx = hf.require_group('%s/%s' %(tx_id,read_id))
             if 'events' in hf_tx:
                 continue
