@@ -41,9 +41,9 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
 
         K = 2
         if method['pooling']:
-            n_groups = len(set(info['condition_names']))
+            n_groups = len(data_at_pos['condition_names'])
         else:
-            n_groups = len(set(info['run_names']))
+            n_groups = len(data_at_pos['run_names'])
 
         ### Set up priors.
         priors = {'mu_tau':defaultdict(list),'w':dict()}
