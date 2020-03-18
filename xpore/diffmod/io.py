@@ -254,7 +254,9 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
         ### calculate stats_pairwise
         stats_pairwise = []
         for cond1, cond2 in itertools.combinations(condition_names, 2):
-            if not model.method['pooling']:
+            if model.method['pooling']:
+                cond1, cond2 = [cond1], [cond2]
+            else:
                 cond1, cond2 = cond2run_dict[cond1], cond2run_dict[cond2]
             if any(r in model_group_names for r in cond1) and any(r in model_group_names for r in cond2):
                 w_cond1 = w[numpy.isin(model_group_names, cond1), 0].flatten()
@@ -274,7 +276,9 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
             ### calculate stats_one_vs_all
             stats_one_vs_all = []
             for cond in condition_names:
-                if not model.method['pooling']:
+                if model.method['pooling']:
+                    cond = [cond]
+                else:
                     cond = cond2run_dict[cond]
                 if any(r in model_group_names for r in runs1):
                     w_cond1 = w[numpy.isin(model_group_names, cond), 0].flatten()
