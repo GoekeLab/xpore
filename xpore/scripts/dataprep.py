@@ -58,8 +58,8 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     sum_norm_std = eventalign_result["sum_norm_std"].sum()
     sum_dwell_time = eventalign_result["sum_dwell_time"].sum()
 
-    start_idx = eventalign_result['start_idx'].min()
-    end_idx = eventalign_result['end_idx'].max()
+    start_idx = eventalign_result['start_idx'].min().astype('i8')
+    end_idx = eventalign_result['end_idx'].max().astype('i8')
     total_length = eventalign_result['length'].sum()
 
     eventalign_result = pandas.concat([start_idx,end_idx],axis=1)
@@ -74,8 +74,8 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     eventalign_result['read_id'] = [read_name]*len(eventalign_result)
 
     features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','norm_std','dwell_time','start_idx','end_idx']
-    features_dtype = numpy.dtype([('read_id', 'object'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'),
-                                  ('end_idx', '<i8')])
+    # features_dtype = numpy.dtype([('read_id', 'object'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'),
+    #                               ('end_idx', '<i8')])
     # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean'] #original features that Ploy's using.
 
     df_events_per_read = eventalign_result[features]
@@ -87,7 +87,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     with locks['hdf5'], h5py.File(out_paths['hdf5'],'a') as hf:
         for tx_id,read_id in df_events_per_read.index.unique():
             df2write = df_events_per_read.loc[[tx_id,read_id],:].reset_index() 
-            events = numpy.rec.fromrecords(misc.str_encode(df2write[features]),names=features,dtype=features_dtype) #,dtype=features_dtype
+            events = numpy.rec.fromrecords(misc.str_encode(df2write[features]),names=features) #,dtype=features_dtype
             
             hf_tx = hf.require_group('%s/%s' %(tx_id,read_id))
             if 'events' in hf_tx:
