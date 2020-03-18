@@ -176,7 +176,7 @@ def parallel_prepare_for_inference(eventalign_filepath,gt_dir,out_dir,n_processe
 
     # Only include reads that conform to DRACH motifs
 
-    all_kmers = np.array(["".join(x) for x in product(['A', 'G', 'T'], ['G', 'A'], ['A'], ['C'], ['A', 'C', 'T'])], dtype='S5')
+    all_kmers = numpy.array(["".join(x) for x in product(['A', 'G', 'T'], ['G', 'A'], ['A'], ['C'], ['A', 'C', 'T'])], dtype='S5')
     with h5py.File(eventalign_filepath, 'r') as f:
         for tx in f:
             read_task = []
