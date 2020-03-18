@@ -145,7 +145,7 @@ def prepare_for_inference(tx,gt_dir,read_task,all_kmers,out_dir,locks):
         # Saving output in hdf5 file format
 
         n_reads = len(X)
-        fname = '{}_{}_{}_{}_{}_{}.hdf5'.format(gene, tx, gpos, pos, kmer, n_reads)
+        fname = os.path.join(out_dir, '{}_{}_{}_{}_{}_{}.hdf5'.format(gene, tx, gpos, pos, kmer, n_reads))
         with h5py.File(fname, 'w') as f:
             assert(n_reads == len(read_ids))
             f['X'] = X
@@ -157,8 +157,13 @@ def prepare_for_inference(tx,gt_dir,read_task,all_kmers,out_dir,locks):
     with locks['log'], open(os.path.join(out_dir, "inference_preparation.log"),'a') as f:
         f.write('%s\n' %(tx))    
 
-def parallel_prepare_for_inference(eventalign_filepath,gt_dir,out_dir,n_processes):
-    # Create output paths and locks.
+def parallel_prepare_for_inference(eventalign_filepath,gt_dir,eventalign_prep_dir,n_processes):
+    # Create output path and locks.
+    out_dir = os.path.join(eventalign_prep_dir, "inference")
+    
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+
     locks = {'log': multiprocessing.Lock()}
     log_path = os.path.join(out_dir, "prepare_for_inference.log")
     # Create empty files for logs.
@@ -492,7 +497,7 @@ def main():
         parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
     
     # (2) Generate segmented hdf5 files for prediction
-    parallel_prepare_for_inference(os.path.join(out_dir, 'eventalign.hdf5'),gt_mapping_dir,os.path.join(out_dir,"inference"),n_processes)
+    parallel_prepare_for_inference(os.path.join(out_dir, 'eventalign.hdf5'),gt_mapping_dir,out_dir,n_processes)
     # (2) Generate read count from the bamtx file.
     # read_count_filepath = os.path.join(out_dir,'read_count.csv')
     # if os.path.exists(read_count_filepath):
