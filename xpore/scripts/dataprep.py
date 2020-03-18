@@ -8,6 +8,7 @@ import csv
 import json
 import subprocess
 import pysam #0-based leftmost coordinate
+from itertools import product
 from pyensembl import EnsemblRelease
 from pyensembl import Genome
 from tqdm import tqdm
@@ -173,12 +174,15 @@ def parallel_prepare_for_inference(eventalign_filepath,gt_dir,out_dir,n_processe
         
     ## Load tasks into task_queue. A task is a read information from a specific site.
 
+    # Only include reads that conform to DRACH motifs
+
+    all_kmers = np.array(["".join(x) for x in product(['A', 'G', 'T'], ['G', 'A'], ['A'], ['C'], ['A', 'C', 'T'])], dtype='S5')
     with h5py.File(eventalign_filepath, 'r') as f:
         for tx in f:
             read_task = []
             for read in f[tx]:
                 read_task.append(f[tx][read]['events'][:])
-            task_queue.put((tx,gt_dir,read_task,out_dir))
+            task_queue.put((tx,gt_dir,read_task,all_kmers,out_dir))
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
