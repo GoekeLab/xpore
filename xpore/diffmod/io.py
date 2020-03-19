@@ -195,8 +195,8 @@ def get_result_table_header(cond2run_dict,pooling=False):
 
     ###
     header += stats_pairwise
-    if len(condition_names) > 2:
-        header += stats_one_vs_all
+    # if len(condition_names) > 2:
+    #     header += stats_one_vs_all
     ###
 
     return header
@@ -272,27 +272,27 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
             else:
                 stats_pairwise += [None, None, None]
 
-        if len(condition_names) > 2:
-            ### calculate stats_one_vs_all
-            stats_one_vs_all = []
-            for cond in condition_names:
-                if model.method['pooling']:
-                    cond = [cond]
-                else:
-                    cond = cond2run_dict[cond]
-                if any(r in model_group_names for r in cond):
-                    w_cond1 = w[numpy.isin(model_group_names, cond), 0].flatten()
-                    w_cond2 = w[~numpy.isin(model_group_names, cond), 0].flatten()
-                    n_cond1 = coverage[numpy.isin(model_group_names, cond)]
-                    n_cond2 = coverage[~numpy.isin(model_group_names, cond)]
+#         if len(condition_names) > 2:
+#             ### calculate stats_one_vs_all
+#             stats_one_vs_all = []
+#             for cond in condition_names:
+#                 if model.method['pooling']:
+#                     cond = [cond]
+#                 else:
+#                     cond = cond2run_dict[cond]
+#                 if any(r in model_group_names for r in cond):
+#                     w_cond1 = w[numpy.isin(model_group_names, cond), 0].flatten()
+#                     w_cond2 = w[~numpy.isin(model_group_names, cond), 0].flatten()
+#                     n_cond1 = coverage[numpy.isin(model_group_names, cond)]
+#                     n_cond2 = coverage[~numpy.isin(model_group_names, cond)]
 
-                    z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
-                    ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
-                    abs_z_score = abs(z_score)
+#                     z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
+#                     ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
+#                     abs_z_score = abs(z_score)
 
-                    stats_one_vs_all += [p_ws, ws_mean_diff, abs_z_score]
-                else:
-                    stats_one_vs_all += [None, None, None]
+#                     stats_one_vs_all += [p_ws, ws_mean_diff, abs_z_score]
+#                 else:
+#                     stats_one_vs_all += [None, None, None]
 
         ### lower, higher clusters
         w_min = w0
@@ -321,8 +321,8 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
         row += list(w_min_ordered) + list(coverage_ordered)
 
         row += stats_pairwise
-        if len(condition_names) > 2:
-            row += stats_one_vs_all
+        # if len(condition_names) > 2:
+        #     row += stats_one_vs_all
 
         table += [tuple(row)]
 
