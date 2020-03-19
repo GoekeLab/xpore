@@ -69,6 +69,7 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
         io.save_models(models,out_paths['model_filepath'])
     if save_table:
         # Generating the result table.
+        print('Generating the result table.')
         table = io.generate_result_table(models,info['cond2run_dict'])
         with locks['table'], open(out_paths['table'],'a') as f:
             csv.writer(f,delimiter=',').writerows(table)
@@ -116,7 +117,7 @@ def main():
     gene_ids_done = []
     if save_table:
         if resume and os.path.exists(out_paths['log']):
-            gene_ids_done = [line for line in open(out_paths['log'],'r')] 
+            gene_ids_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]  
             print(gene_ids_done)
         else:
             with open(out_paths['table'],'w') as f:
