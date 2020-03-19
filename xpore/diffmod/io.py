@@ -280,7 +280,7 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
                     cond = [cond]
                 else:
                     cond = cond2run_dict[cond]
-                if any(r in model_group_names for r in runs1):
+                if any(r in model_group_names for r in cond):
                     w_cond1 = w[numpy.isin(model_group_names, cond), 0].flatten()
                     w_cond2 = w[~numpy.isin(model_group_names, cond), 0].flatten()
                     n_cond1 = coverage[numpy.isin(model_group_names, cond)]
