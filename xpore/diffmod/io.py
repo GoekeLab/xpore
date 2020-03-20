@@ -181,7 +181,7 @@ def get_result_table_header(cond2run_dict,pooling=False):
     for condition_name in condition_names:
         stats_one_vs_all += ['p_ws_%s_vs_all' % condition_name, 'ws_mean_diff_%s_vs_all' % condition_name, 'abs_z_score_%s_vs_all' % condition_name]
 
-    header = ['idx', 'position', 'kmer', 'mu_min', 'mu_max', 'sigma2_min', 'sigma2_max']
+    header = ['idx', 'position', 'kmer']
     header += ['p_overlap']
     header += ['x_x1', 'y_x1', 'x_x2', 'y_x2']
     
@@ -189,11 +189,11 @@ def get_result_table_header(cond2run_dict,pooling=False):
         names = condition_names
     else:
         names = run_names
-    for name in names:
-        header += ['w_min_%s' % name]
+    # for name in names:
+    #     header += ['w_min_%s' % name]
     for name in names:
         header += ['coverage_%s' % name]
-    header += ['mu_unmod', 'mu_mod', 'sigma2_unmod', 'sigma2_mod']
+    header += ['mu_unmod', 'mu_mod', 'sigma2_unmod', 'sigma2_mod', 'conf_mu_unmod', 'conf_mu_mod']
     for name in names:
         header += ['w_mod_%s' % name]
     ###
@@ -329,18 +329,21 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
             mu_assigned = [mu[0],mu[1]] 
             sigma2_assigned = [sigma2[0],sigma2[1]] 
             w_mod_ordered = w_max_ordered
+            conf_mu = [conf_mu_min, conf_mu_max]
         else:
             mu_assigned = [mu[1],mu[0]] 
             sigma2_assigned = [sigma2[1],sigma2[0]] 
             w_mod_ordered = w_min_ordered
+            conf_mu = [conf_mu_max, conf_mu_min]
         #
         
         ###
         ### prepare values to write
-        row = [idx, position, kmer] + list(mu) + list(sigma2) + [p_overlap]
+        row = [idx, position, kmer] + [p_overlap]
         row += list_cdf_at_intersections
-        row += list(w_min_ordered) + list(coverage_ordered)
-        row += list(mu_assigned) + list(sigma2_assigned) + list(w_mod_ordered)
+        row += list(coverage_ordered)
+        row += mu_assigned + sigma2_assigned + conf_mu
+        row += list(w_mod_ordered)
 
         row += stats_pairwise
         if len(condition_names) > 2:
