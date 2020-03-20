@@ -8,7 +8,7 @@ class GMM(object):
     """
     1D 2-Gaussian mixture model.
     """
-    def __init__(self, method=None, data={'x': None, 'y': None, 'condition_names': None, 'run_names': None}, inits={'info': None, 'nodes': {'x': None, 'y': None, 'w': None, 'mu_tau': None, 'z': None}}, priors={'mu_tau': None, 'w': None}):
+    def __init__(self, method=None, data={'x': None, 'y': None, 'condition_names': None, 'run_names': None}, inits={'info': None, 'nodes': {'x': None, 'y': None, 'w': None, 'mu_tau': None, 'z': None}}, priors={'mu_tau': None, 'w': None},kmer_signal=None):
         """
         Parameters
         ----------
@@ -25,6 +25,7 @@ class GMM(object):
         self.aux_params = dict()
         self.K = 2  # modified and unmodified
         self.method = method
+        self.kmer_signal = kmer_signal
 
         self.__init_info(inits['info'])
 

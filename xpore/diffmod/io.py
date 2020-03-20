@@ -192,7 +192,9 @@ def get_result_table_header(cond2run_dict,pooling=False):
         header += ['w_min_%s' % name]
     for name in names:
         header += ['coverage_%s' % name]
-
+    header += ['mu_unmod', 'mu_mod', 'sigma2_unmod', 'sigma2_mod']
+    for name in names:
+        header += ['w_mod_%s' % name]
     ###
     header += stats_pairwise
     if len(condition_names) > 2:
@@ -301,7 +303,7 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
             sigma2 = sigma2[::-1]
             w_min = 1-w0
         ###
-        w_min_ordered, coverage_ordered = [], [] # ordered by headers.        
+        w_min_ordered, coverage_ordered = [], [] # ordered by conditon_names / run_names based on headers.        
         if model.method['pooling']:
             names = condition_names
         else:
@@ -313,12 +315,27 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
             else:
                 w_min_ordered += [None]
                 coverage_ordered += [None]
-                
+        
+        ### Cluster assignment ###
+        # Calculate confidence of mu_min, mu_max
+        # Given that mu[0] < mu[1],
+        conf_mu_min,conf_mu_max = calculate_confidence(mu[0],model.kmer_signal),calculate_confidence(mu[1],model.kmer_signal)
+        if conf_mu_min > conf_mu_max:
+            mu_assigned = [mu[0],mu[1]] 
+            sigma2_assigned = [sigma2[0],sigma2[1]] 
+            w_mod_ordered = 1-numpy.array(w_min_ordered)
+        else:
+            mu_assigned = [mu[1],mu[0]] 
+            sigma2_assigned = [sigma2[1],sigma2[0]] 
+            w_mod_ordered = numpy.array(w_min_ordered)
+        #
+        
         ###
         ### prepare values to write
         row = [idx, position, kmer] + list(mu) + list(sigma2) + [p_overlap]
         row += list_cdf_at_intersections
         row += list(w_min_ordered) + list(coverage_ordered)
+        row += list(mu_assigned) + list(sigma2_assigned) + list(w_mod_ordered)
 
         row += stats_pairwise
         if len(condition_names) > 2:
@@ -327,3 +344,7 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
         table += [tuple(row)]
 
     return table
+
+    def calculate_confidence(mu,kmer_signal):
+        cdf = scipy.stats.norm.cdf(kmer_signal['mean'] - abs(kmer_signal['mean']-mu), loc=kmer_signal['mean'], scale=kmer_signal['std'])
+        return cdf*2

@@ -34,8 +34,8 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
     models = dict()
     for key,data_at_pos in data.items():
         idx, pos, kmer = key
-        model_kmer_mean = model_kmer.loc[kmer,'model_mean']
-        model_kmer_tau = 1./(model_kmer.loc[kmer,'model_stdv']**2)
+        kmer_signal = {'mean':model_kmer.loc[kmer,'model_mean'],'std':model_kmer.loc[kmer,'model_stdv']}
+        kmer_signal['tau'] = 1./(kmer_signal['std']**2)
         y_mean = data_at_pos['y'].mean()
         y_tau = 1./(data_at_pos['y'].std()**2)
 
@@ -49,10 +49,10 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
         priors = {'mu_tau':defaultdict(list),'w':dict()}
 
         for k in range(K):
-            priors['mu_tau']['location'] += [model_kmer_mean]
+            priors['mu_tau']['location'] += [kmer_signal['mean']]
             priors['mu_tau']['lambda'] += [prior_params['lambda'][k]]
-            priors['mu_tau']['alpha'] += [model_kmer_tau]
-            priors['mu_tau']['beta'] += [prior_params['beta_scale'][k]*1./model_kmer_tau]
+            priors['mu_tau']['alpha'] += [kmer_signal['tau']]
+            priors['mu_tau']['beta'] += [prior_params['beta_scale'][k]*1./kmer_signal['tau']]
         
         for k,v in priors['mu_tau'].items():
             priors['mu_tau'][k] = numpy.array(v)
@@ -63,7 +63,7 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
         ###
 
         ### Fit models.
-        models[key] = GMM(method,data_at_pos,priors=priors).fit()
+        models[key] = GMM(method,data_at_pos,priors=priors,kmer_signal=kmer_signal).fit()
         
     if save_models: #todo: 
         io.save_models(models,out_paths['model_filepath'])
