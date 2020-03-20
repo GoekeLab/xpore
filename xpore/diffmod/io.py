@@ -321,7 +321,7 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
         ### Cluster assignment ###
         # Calculate confidence of mu_min, mu_max
         # Given that mu[0] < mu[1],
-        conf_mu_min,conf_mu_max = calculate_confidence_cluster_assignment(mu[0],model.kmer_signal),calculate_confidence(mu[1],model.kmer_signal)
+        conf_mu_min,conf_mu_max = calculate_confidence_cluster_assignment(mu[0],model.kmer_signal),calculate_confidence_cluster_assignment(mu[1],model.kmer_signal)
         if conf_mu_min > conf_mu_max:
             mu_assigned = [mu[0],mu[1]] 
             sigma2_assigned = [sigma2[0],sigma2[1]] 
