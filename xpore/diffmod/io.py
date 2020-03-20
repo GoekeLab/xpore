@@ -306,7 +306,7 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
             w_min = 1-w0
         w_max = 1-w_min
         ###
-        w_min_ordered, coverage_ordered = [], [] # ordered by conditon_names / run_names based on headers.        
+        w_min_ordered, w_max_ordered, coverage_ordered = [], [], [] # ordered by conditon_names / run_names based on headers.        
         if model.method['pooling']:
             names = condition_names
         else:
