@@ -304,6 +304,7 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
             mu = mu[::-1]
             sigma2 = sigma2[::-1]
             w_min = 1-w0
+        w_max = 1-w_min
         ###
         w_min_ordered, coverage_ordered = [], [] # ordered by conditon_names / run_names based on headers.        
         if model.method['pooling']:
@@ -313,9 +314,11 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
         for name in names:
             if name in model_group_names:
                 w_min_ordered += list(w_min[numpy.isin(model_group_names, name)])
+                w_max_ordered += list(w_max[numpy.isin(model_group_names, name)])
                 coverage_ordered += list(coverage[numpy.isin(model_group_names, name)])
             else:
                 w_min_ordered += [None]
+                w_max_ordered += [None]
                 coverage_ordered += [None]
         
         ### Cluster assignment ###
@@ -325,11 +328,11 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
         if conf_mu_min > conf_mu_max:
             mu_assigned = [mu[0],mu[1]] 
             sigma2_assigned = [sigma2[0],sigma2[1]] 
-            w_mod_ordered = 1-numpy.array(w_min_ordered)
+            w_mod_ordered = w_max_ordered
         else:
             mu_assigned = [mu[1],mu[0]] 
             sigma2_assigned = [sigma2[1],sigma2[0]] 
-            w_mod_ordered = numpy.array(w_min_ordered)
+            w_mod_ordered = w_min_ordered
         #
         
         ###
