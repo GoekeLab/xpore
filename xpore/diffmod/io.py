@@ -4,6 +4,7 @@ import os
 from tqdm import tqdm  # progress bar.
 from collections import OrderedDict, defaultdict
 import itertools
+import scipy.stats
 
 from ..utils import stats
 from .gmm import GMM
