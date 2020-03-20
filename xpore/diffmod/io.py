@@ -210,6 +210,7 @@ def get_ordered_condition_run_names(cond2run_dict):
 
 # def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
 
+
 def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
     """
     Generate a table containing learned model parameters and statistic tests.
@@ -319,7 +320,7 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
         ### Cluster assignment ###
         # Calculate confidence of mu_min, mu_max
         # Given that mu[0] < mu[1],
-        conf_mu_min,conf_mu_max = calculate_confidence(mu[0],model.kmer_signal),calculate_confidence(mu[1],model.kmer_signal)
+        conf_mu_min,conf_mu_max = calculate_confidence_cluster_assignment(mu[0],model.kmer_signal),calculate_confidence(mu[1],model.kmer_signal)
         if conf_mu_min > conf_mu_max:
             mu_assigned = [mu[0],mu[1]] 
             sigma2_assigned = [sigma2[0],sigma2[1]] 
@@ -345,6 +346,7 @@ def generate_result_table(models, cond2run_dict):  # per idx (gene/transcript)
 
     return table
 
-    def calculate_confidence(mu,kmer_signal):
-        cdf = scipy.stats.norm.cdf(kmer_signal['mean'] - abs(kmer_signal['mean']-mu), loc=kmer_signal['mean'], scale=kmer_signal['std'])
-        return cdf*2
+def calculate_confidence_cluster_assignment(mu,kmer_signal):
+    cdf = scipy.stats.norm.cdf(kmer_signal['mean'] - abs(kmer_signal['mean']-mu), loc=kmer_signal['mean'], scale=kmer_signal['std'])
+    return cdf*2
+
