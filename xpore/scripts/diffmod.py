@@ -160,6 +160,7 @@ def main():
             except KeyError:
                 data_dict[run_name] = None
             else:
+                print(run_name,pos_start,pos_end)
                 f_data[run_name].seek(pos_start,0)
                 json_str = f_data[run_name].read(pos_end-pos_start)
                 json_str = '{%s}' %json_str
@@ -169,8 +170,10 @@ def main():
         # tmp
         out_paths['model_filepath'] = os.path.join(paths['out_dir'],'models','%s.hdf5' %idx)
         #
+        print('queue put')
         # if data_dict[run_name][idx] is not None: # todo: remove this line. Fix in dataprep
         task_queue.put((idx, data_dict, info, method, criteria, model_kmer, prior_params, out_paths,save_models,save_table)) # Blocked if necessary until a free slot is available.
+        print('queue put ok')
 
         
     # Put the stop task into task_queue.
