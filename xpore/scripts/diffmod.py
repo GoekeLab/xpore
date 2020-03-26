@@ -142,7 +142,7 @@ def main():
     for run_name in info['run_names']:
         f_data[run_name] = open(os.path.join(paths['data_dir'],run_name,'dataprep','data.json'),'r') # todo
         
-    # Read readcount files #tmp
+    # Read readcount files 
     df_readcount = dict()
     for run_name in info['run_names']:
         df_readcount[run_name] = pandas.read_csv(os.path.join(paths['data_dir'],run_name,'dataprep','read_count.csv')).groupby('gene_id')['n_reads'].sum() # todo
@@ -157,8 +157,14 @@ def main():
     for idx in gene_ids:
         if resume and (idx in gene_ids_done):
             continue
-        if (df_readcount[run_name].loc[idx] < criteria['read_count_min']) or (df_readcount[run_name].loc[idx] > criteria['read_count_max']):
+        
+        # memory issue #todo
+        n_reads_sum = 0
+        for run_name in info['run_names']:
+            n_reads_sum += df_readcount[run_name].loc[idx]
+        if n_reads_sum > 10000:
             continue
+            
         data_dict = dict()
         for run_name in info['run_names']:
             try:
