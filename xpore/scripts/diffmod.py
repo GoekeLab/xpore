@@ -136,11 +136,17 @@ def main():
     for run_name in info['run_names']:
         df_index = pandas.read_csv(os.path.join(paths['data_dir'],run_name,'dataprep','data.index'),sep=',') # todo
         f_index[run_name] = dict(zip(df_index['gene_id'],zip(df_index['start'],df_index['end'])))
+        
     # Open data files
     f_data = dict()
     for run_name in info['run_names']:
         f_data[run_name] = open(os.path.join(paths['data_dir'],run_name,'dataprep','data.json'),'r') # todo
         
+    # Read readcount files #tmp
+    df_readcount = dict()
+    for run_name in info['run_names']:
+        df_readcount[run_name] = pandas.read_csv(os.path.join(paths['data_dir'],run_name,'dataprep','read_count.csv')).groupby('gene_id')['n_reads'].sum() # todo
+
     # Load tasks into task_queue.
     # gene_ids = helper.get_gene_ids(config.filepath)
 #    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
@@ -151,8 +157,6 @@ def main():
     for idx in gene_ids:
         if resume and (idx in gene_ids_done):
             continue
-        if idx == 'ENSG00000074800':
-            continue
         data_dict = dict()
         for run_name in info['run_names']:
             try:
@@ -160,7 +164,7 @@ def main():
             except KeyError:
                 data_dict[run_name] = None
             else:
-                print(idx,run_name,pos_start,pos_end)
+                print(idx,run_name,pos_start,pos_end,df_readcount[run_name].loc[idx])
                 f_data[run_name].seek(pos_start,0)
                 json_str = f_data[run_name].read(pos_end-pos_start)
                 json_str = '{%s}' %json_str
