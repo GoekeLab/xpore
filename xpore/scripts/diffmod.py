@@ -152,6 +152,7 @@ def main():
         if resume and (idx in gene_ids_done):
             continue
             
+        print(idx)    
         data_dict = dict()
         for run_name in info['run_names']:
             try:
@@ -163,6 +164,7 @@ def main():
                 json_str = f_data[run_name].read(pos_end-pos_start)
                 json_str = '{%s}' %json_str
                 data_dict[run_name] = json.loads(json_str) # A data dict for each gene.
+                print('data_dict ok')
                 
         # tmp
         out_paths['model_filepath'] = os.path.join(paths['out_dir'],'models','%s.hdf5' %idx)
