@@ -151,8 +151,8 @@ def main():
     for idx in gene_ids:
         if resume and (idx in gene_ids_done):
             continue
-            
-        print(idx)    
+        if idx == 'ENSG00000074800':
+            continue
         data_dict = dict()
         for run_name in info['run_names']:
             try:
@@ -160,20 +160,17 @@ def main():
             except KeyError:
                 data_dict[run_name] = None
             else:
-                print(run_name,pos_start,pos_end)
+                print(idx,run_name,pos_start,pos_end)
                 f_data[run_name].seek(pos_start,0)
                 json_str = f_data[run_name].read(pos_end-pos_start)
                 json_str = '{%s}' %json_str
                 data_dict[run_name] = json.loads(json_str) # A data dict for each gene.
-                print('data_dict ok')
                 
         # tmp
         out_paths['model_filepath'] = os.path.join(paths['out_dir'],'models','%s.hdf5' %idx)
         #
-        print('queue put')
         # if data_dict[run_name][idx] is not None: # todo: remove this line. Fix in dataprep
         task_queue.put((idx, data_dict, info, method, criteria, model_kmer, prior_params, out_paths,save_models,save_table)) # Blocked if necessary until a free slot is available.
-        print('queue put ok')
 
         
     # Put the stop task into task_queue.
