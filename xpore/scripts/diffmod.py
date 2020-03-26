@@ -157,6 +157,8 @@ def main():
     for idx in gene_ids:
         if resume and (idx in gene_ids_done):
             continue
+        if (df_readcount[run_name].loc[idx] < criteria['read_count_min']) or (df_readcount[run_name].loc[idx] > criteria['read_count_max']):
+            continue
         data_dict = dict()
         for run_name in info['run_names']:
             try:
