@@ -161,7 +161,12 @@ def main():
         # memory issue #todo
         n_reads_sum = 0
         for run_name in info['run_names']:
-            n_reads_sum += df_readcount[run_name].loc[idx]
+            try:
+                n_reads = df_readcount[run_name].loc[idx]
+            except KeyError:
+                continue
+            else:
+                n_reads_sum += n_reads
         if n_reads_sum > 10000:
             continue
             
