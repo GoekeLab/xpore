@@ -169,7 +169,8 @@ def main():
                 n_reads_sum += n_reads
         if n_reads_sum > 10000:
             continue
-            
+        #
+        
         data_dict = dict()
         for run_name in info['run_names']:
             try:
