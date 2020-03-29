@@ -22,7 +22,8 @@ setup(
     install_requires=[],
     entry_points={'console_scripts': ["xpore-dataprep={}.scripts.dataprep:main".format(__pkg_name__),
                                       "xpore-backdoor={}.scripts.backdoor:main".format(__pkg_name__),
-                                      "xpore-diffmod={}.scripts.diffmod:main".format(__pkg_name__)]},
+                                      "xpore-diffmod={}.scripts.diffmod:main".format(__pkg_name__),
+                                      "xpore-inference={}.scripts.inference:main".format(__pkg_name__)]},
     classifiers=[
         # Trove classifiers
         # (https://pypi.python.org/pypi?%3Aaction=list_classifiers)
