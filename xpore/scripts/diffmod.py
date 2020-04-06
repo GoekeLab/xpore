@@ -69,6 +69,7 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
         models[key] = GMM(method,data_at_pos,priors=priors,kmer_signal=kmer_signal).fit()
         
     if save_models: #todo: 
+        print(out_paths['model_filepath'],idx)
         io.save_models(models,out_paths['model_filepath'] %idx)
     if save_table:
         # Generating the result table.
