@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument('--save_models', dest='save_models', help='Save the result table.',default=False,action='store_true') # todo
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
     
-    parser.add_argument('--genes', dest='genes', help='Specify.')
+    parser.add_argument('--genes', dest='genes', help='Specify.',default=[],nargs='*')
 
 
 
