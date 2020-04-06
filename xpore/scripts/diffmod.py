@@ -70,7 +70,7 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
         
     if save_models: #todo: 
         print(out_paths['model_filepath'],idx)
-        io.save_models(models,out_paths['model_filepath'] %idx)
+        io.save_models(models,out_paths['model_filepath'])
     if save_table:
         # Generating the result table.
         table = io.generate_result_table(models,info['cond2run_dict'])
@@ -194,7 +194,7 @@ def main():
                 data_dict[run_name] = json.loads(json_str) # A data dict for each gene.
                 
         # tmp
-        out_paths['model_filepath'] = os.path.join(paths['out_dir'],'models','%s.hdf5' %idx)
+        out_paths['model_filepath'] = os.path.join(paths['models'],'%s.hdf5' %idx)
         #
         # if data_dict[run_name][idx] is not None: # todo: remove this line. Fix in dataprep
         task_queue.put((idx, data_dict, info, method, criteria, model_kmer, prior_params, out_paths,save_models,save_table)) # Blocked if necessary until a free slot is available.
