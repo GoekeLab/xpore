@@ -23,6 +23,9 @@ def get_args():
     parser.add_argument('--save_table', dest='save_table', help='Save the result table.',default=False,action='store_true') 
     parser.add_argument('--save_models', dest='save_models', help='Save the result table.',default=False,action='store_true') # todo
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
+    
+    parser.add_argument('--genes', dest='genes', help='Specify.')
+
 
 
     return parser.parse_args()
@@ -150,8 +153,14 @@ def main():
     # Load tasks into task_queue.
     # gene_ids = helper.get_gene_ids(config.filepath)
 #    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
-    # gene_ids = ['ENSG00000159111']
-    gene_ids = helper.get_gene_ids(f_index,info)
+    # gene_ids = ['ENSG00000159111']    
+    
+    if len(genes) > 0:
+        gene_ids = genes
+    else:
+        gene_ids = helper.get_gene_ids(f_index,info)
+
+
     print(len(gene_ids),'genes to be testing ...')
     
     for idx in gene_ids:
