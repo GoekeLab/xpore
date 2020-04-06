@@ -92,6 +92,7 @@ def main():
     save_models = args.save_models
     save_table = args.save_table
     resume = args.resume
+    gene_ids = args.genes
 
     config = Configurator(config_filepath) 
     paths = config.get_paths()
@@ -155,9 +156,7 @@ def main():
 #    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
     # gene_ids = ['ENSG00000159111']    
     
-    if len(genes) > 0:
-        gene_ids = genes
-    else:
+    if len(gene_ids) == 0:
         gene_ids = helper.get_gene_ids(f_index,info)
 
 
