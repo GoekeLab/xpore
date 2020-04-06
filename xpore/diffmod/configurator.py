@@ -52,8 +52,8 @@ class Configurator(object):
 
         paths['data_dir'] = config_section_map(self.config, 'Path')['data_dir']
         paths['out_dir'] = os.path.join(config_section_map(self.config, 'Path')['out_dir'], self.filename)
-        paths.update(misc.makedirs(paths['out_dir']))
-        # paths['model_filepath'] = os.path.join(paths['out_dir'], 'out', '%s.model')
+        paths.update(misc.makedirs(paths['out_dir'],sub_dirs=['models']))
+        paths['model_filepath'] = os.path.join(paths['out_dir'], 'models', '%s.model')
         # paths['result_filepath'] = os.path.join(paths['out_dir'], 'out', '%s.table')
         # paths['gt_mapping_filepath'] = config_section_map(self.config, 'Path')['gt_mapping_filepath']
         # paths['gt_mapping_dir'] = config_section_map(self.config, 'Path')['gt_mapping_dir']

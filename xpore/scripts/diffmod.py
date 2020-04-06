@@ -69,7 +69,7 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
         models[key] = GMM(method,data_at_pos,priors=priors,kmer_signal=kmer_signal).fit()
         
     if save_models: #todo: 
-        io.save_models(models,out_paths['model_filepath'])
+        io.save_models(models,out_paths['model_filepath'] %idx)
     if save_table:
         # Generating the result table.
         table = io.generate_result_table(models,info['cond2run_dict'])
@@ -186,7 +186,7 @@ def main():
             except KeyError:
                 data_dict[run_name] = None
             else:
-                print(idx,run_name,pos_start,pos_end,df_readcount[run_name].loc[idx])
+                # print(idx,run_name,pos_start,pos_end,df_readcount[run_name].loc[idx])
                 f_data[run_name].seek(pos_start,0)
                 json_str = f_data[run_name].read(pos_end-pos_start)
                 json_str = '{%s}' %json_str
