@@ -94,7 +94,12 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
 
 def prepare_for_inference(tx,gt_dir,read_task,all_kmers,out_dir,locks):
     reads = numpy.concatenate(read_task)
-    gt_map = pandas.read_csv(os.path.join(gt_dir,tx,"gt_mapping.csv.gz")).set_index("tx_pos")
+    try:
+        gt_map = pandas.read_csv(os.path.join(gt_dir,tx,"gt_mapping.csv.gz")).set_index("tx_pos")
+    except FileNotFoundError:
+        with locks['log'], open(os.path.join(out_dir, "prepare_for_inference.log"),'a') as f:
+            f.write('Error at %s\n' %(tx))
+        return
 
     gene = gt_map.iloc[0]["g_id"]
     reads = numpy.concatenate(read_task)
@@ -146,7 +151,7 @@ def prepare_for_inference(tx,gt_dir,read_task,all_kmers,out_dir,locks):
             f['end_idx'] = end_event_indices
         f.close()
 
-    with locks['log'], open(os.path.join(out_dir, "inference_preparation.log"),'a') as f:
+    with locks['log'], open(os.path.join(out_dir, "prepare_for_inference.log"),'a') as f:
         f.write('%s\n' %(tx))    
 
 def parallel_prepare_for_inference(eventalign_filepath,gt_dir,eventalign_prep_dir,n_processes):
