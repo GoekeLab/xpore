@@ -121,6 +121,7 @@ def save_models(models, model_filepath):  # per gene/transcript
 
         model_file[idx][position].create_group('nodes')  # ['x','y','z','w','mu_tau'] => store only their params
         for node_name in model.nodes:
+            print(node_name)
             model_file[idx][position]['nodes'].create_group(node_name)
             if model.nodes[node_name].params is None:
                 continue
@@ -129,7 +130,6 @@ def save_models(models, model_filepath):  # per gene/transcript
                     value = [val.encode('UTF-8') for val in value]
                 model_file[idx][position]['nodes'][node_name][param_name] = value
             if model.nodes[node_name].data is not None: # To be optional.
-                print(node_name,'data is being saved ...')
                 model_file[idx][position]['nodes'][node_name]['data'] = model.nodes[node_name].data
 
     model_file.close()
