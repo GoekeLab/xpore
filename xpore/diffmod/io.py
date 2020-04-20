@@ -129,6 +129,7 @@ def save_models(models, model_filepath):  # per gene/transcript
                     value = [val.encode('UTF-8') for val in value]
                 model_file[idx][position]['nodes'][node_name][param_name] = value
             if model.nodes[node_name].data is not None: # To be optional.
+                print(node_name,'data is being saved ...')
                 model_file[idx][position]['nodes'][node_name]['data'] = model.nodes[node_name].data
 
     model_file.close()
