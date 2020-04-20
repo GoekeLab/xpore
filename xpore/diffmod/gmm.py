@@ -58,7 +58,7 @@ class GMM(object):
             # additional nodes for postprocessing analysis
             self.nodes['y_condition_names'] = Constant(data=data['y_condition_names'])
             self.nodes['y_run_names'] = Constant(data=data['y_run_names'])
-            print(self.nodes.keys())
+            print(self.nodes['y_condition_names'].data is None)
 
         # Define the graph
         self.nodes['x'] = Constant(data=data_node_x, inits=inits['nodes']['x'])   # NG
