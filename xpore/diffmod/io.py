@@ -137,7 +137,7 @@ def save_models(models, model_filepath):  # per gene/transcript
     model_file.close()
 
 
-def load_models(model_filepath):  # per gene/transcript
+def load_models(model_filepath):  # per gene/transcript #Todo: refine.
     """
     Construct a model and load model parameters.
 
@@ -154,6 +154,7 @@ def load_models(model_filepath):  # per gene/transcript
 
     model_file = h5py.File(model_filepath, 'r')
     models = {}
+    data = defaultdict(dict)
     for idx in model_file:
         for position in tqdm(model_file[idx]):
             inits = {'info': None, 'nodes': {'x': {}, 'y': {}, 'w': {}, 'mu_tau': {}, 'z': {}}}
@@ -163,15 +164,18 @@ def load_models(model_filepath):  # per gene/transcript
             #     inits['info'] = model_file[idx][position]['info'][k]
             for node_name, params in model_file[idx][position]['nodes'].items():
                 for param_name, value in params.items():
-                    inits['nodes'][node_name][param_name] = value[:]
+                    if param_name == 'data':
+                        data[key][node_name] = value[:]
+                    else:
+                        inits['nodes'][node_name][param_name] = value[:]
                 # for param_name, value in priors.items():
                 #     inits['nodes'][node_name][param_name] = value[:]
 
-            models[key] = GMM(inits=inits)
+            models[key] = GMM(data,inits=inits)
 
     model_file.close()
 
-    return models  # {(idx,position,kmer): GMM obj}
+    return models,data  # {(idx,position,kmer): GMM obj}
 
 def get_result_table_header(cond2run_dict,pooling=False):
     condition_names,run_names = get_ordered_condition_run_names(cond2run_dict)
