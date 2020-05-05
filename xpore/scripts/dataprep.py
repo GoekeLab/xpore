@@ -348,9 +348,9 @@ def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):
     with locks['index'], open(out_paths['index'],'a') as f:
         f.write('%s,%d,%d\n' %(gene_id,pos_start,pos_end))
         
-    # with locks['readcount'], open(out_paths['readcount'],'a') as f:
-        # n_reads = len(data_dict)
-    #     f.write('%s,%d\n' %(gene_id,n_reads))
+    with locks['readcount'], open(out_paths['readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
+        n_reads = len(data_dict)
+        f.write('%s,%d\n' %(gene_id,n_reads))
         
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(log_str + '\n')

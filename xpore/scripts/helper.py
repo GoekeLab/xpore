@@ -3,6 +3,7 @@ import numpy
 import os
 import pandas
 from functools import reduce
+from collections import defaultdict
 
 def decor_message(text,opt='simple'):
     text = text.upper()
@@ -16,10 +17,14 @@ def end_queue(task_queue,n_processes):
         task_queue.put(None)
     return task_queue
         
-def get_gene_ids(f_index,info): #todo
+def get_gene_ids(f_index,data_info): #todo
     df_list = []
-    for condition_name in info['condition_names']:
-        run_names = info['cond2run_dict'][condition_name]
+    cond2run_dict = defaultdict(list)
+    for run_name, info in data_info.items():
+        cond2run_dict[info['condition_name']] += [run_name]        
+    unique_condition_names = {info['condition_name'] for _, info in data_info.items()}    
+    for condition_name in unique_condition_names:
+        run_names = cond2run_dict[condition_name]
         list_of_set_gene_ids = []
         for run_name in run_names:
             list_of_set_gene_ids += [set(f_index[run_name].keys())]

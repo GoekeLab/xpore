@@ -16,24 +16,23 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # Required arguments
-    parser.add_argument('--config', dest='config', help='Specify.',required=True)
+    parser.add_argument('--config', dest='config', help='YAML configuraion filepath.',required=True)
 
     # Optional arguments
-    parser.add_argument('--n_processes', dest='n_processes', help='Specify the number of processes.',type=int,default=1)
+    parser.add_argument('--n_processes', dest='n_processes', help='Number of processes.',type=int,default=1)
     parser.add_argument('--save_table', dest='save_table', help='Save the result table.',default=False,action='store_true') 
-    parser.add_argument('--save_models', dest='save_models', help='Save the result table.',default=False,action='store_true') # todo
+    parser.add_argument('--save_models', dest='save_models', help='Save the models.',default=False,action='store_true') # todo
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
     
-    parser.add_argument('--genes', dest='genes', help='Specify.',default=[],nargs='*')
-
+    parser.add_argument('--genes', dest='genes', help='Gene ids.',default=[],nargs='*')
 
 
     return parser.parse_args()
         
-def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, out_paths, save_models, save_table,locks):
+def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_params, out_paths, save_models, save_table,locks):
     """
     """
-    data = io.load_data(idx,data_dict,info['condition_names'],info['run_names'],min_count=criteria['read_count_min'],max_count=criteria['read_count_max'],pooling=method['pooling']) 
+    data = io.load_data(idx,data_dict,data_info,min_count=criteria['read_count_min'],max_count=criteria['read_count_max'],pooling=method['pooling']) 
     models = dict()
     for key,data_at_pos in data.items():
         idx, pos, kmer = key
@@ -53,16 +52,16 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
 
         for k in range(K):
             priors['mu_tau']['location'] += [kmer_signal['mean']]
-            priors['mu_tau']['lambda'] += [prior_params['lambda'][k]]
+            priors['mu_tau']['lambda'] += [prior_params['mu_tau']['lambda'][k]]
             priors['mu_tau']['alpha'] += [kmer_signal['tau']]
-            priors['mu_tau']['beta'] += [prior_params['beta_scale'][k]*1./kmer_signal['tau']]
+            priors['mu_tau']['beta'] += [prior_params['mu_tau']['beta_scale'][k]*1./kmer_signal['tau']]
         
         for k,v in priors['mu_tau'].items():
             priors['mu_tau'][k] = numpy.array(v)
         
         priors['w']['concentration'] = numpy.ones([n_groups,K])*1. #GK
-        priors['w']['concentration'][:,0] = float(prior_params['concentration'][0])
-        priors['w']['concentration'][:,1] = float(prior_params['concentration'][1])
+        priors['w']['concentration'][:,0] = float(prior_params['w']['concentration'][0])
+        priors['w']['concentration'][:,1] = float(prior_params['w']['concentration'][1])
         ###
 
         ### Fit models.
@@ -73,7 +72,7 @@ def execute(idx, data_dict, info, method, criteria, model_kmer, prior_params, ou
         io.save_models(models,out_paths['model_filepath'])
     if save_table:
         # Generating the result table.
-        table = io.generate_result_table(models,info['cond2run_dict'])
+        table = io.generate_result_table(models,data_info)
         with locks['table'], open(out_paths['table'],'a') as f:
             csv.writer(f,delimiter=',').writerows(table)
         # # Logging
@@ -97,7 +96,7 @@ def main():
 
     config = Configurator(config_filepath) 
     paths = config.get_paths()
-    info = config.get_info()
+    data_info = config.get_data_info()
     method = config.get_method()
     criteria = config.get_criteria()
     prior_params = config.get_priors()
@@ -105,6 +104,7 @@ def main():
     model_kmer = pandas.read_csv(paths['model_kmer']).set_index('model_kmer')
     ###
 
+    ###
     # Get gene ids for modelling
     # todo
     
@@ -124,10 +124,9 @@ def main():
             gene_ids_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]  
         else:
             with open(out_paths['table'],'w') as f:
-                csv.writer(f,delimiter=',').writerow(io.get_result_table_header(info['cond2run_dict'],method['pooling']))
+                csv.writer(f,delimiter=',').writerow(io.get_result_table_header(data_info,method['pooling']))
             with open(out_paths['log'],'w') as f:
                 f.write(helper.decor_message('diffmod'))
-
 
 
     # Create and start consumers.
@@ -136,29 +135,25 @@ def main():
         p.start()
 
     ### Load tasks in to task_queue. ###
-    # Read index files
-    f_index = dict()
-    for run_name in info['run_names']:
-        df_index = pandas.read_csv(os.path.join(paths['data_dir'],run_name,'dataprep','data.index'),sep=',') # todo
+    f_index,f_data,df_readcount = {},{},{}
+    for run_name, info in data_info.items():
+        # Read index files
+        df_index = pandas.read_csv(os.path.join(info['dirpath'],'data.index'),sep=',') 
         f_index[run_name] = dict(zip(df_index['gene_id'],zip(df_index['start'],df_index['end'])))
         
-    # Open data files
-    f_data = dict()
-    for run_name in info['run_names']:
-        f_data[run_name] = open(os.path.join(paths['data_dir'],run_name,'dataprep','data.json'),'r') # todo
+        # Read readcount files
+        df_readcount[run_name] = pandas.read_csv(os.path.join(info['dirpath'],'read_count.csv')).groupby('gene_id')['n_reads'].sum() # todo: data.readcount
         
-    # Read readcount files 
-    df_readcount = dict()
-    for run_name in info['run_names']:
-        df_readcount[run_name] = pandas.read_csv(os.path.join(paths['data_dir'],run_name,'dataprep','read_count.csv')).groupby('gene_id')['n_reads'].sum() # todo
-
+        # Open data files
+        f_data[run_name] = open(os.path.join(info['dirpath'],'data.json'),'r') 
+    
     # Load tasks into task_queue.
     # gene_ids = helper.get_gene_ids(config.filepath)
 #    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
     # gene_ids = ['ENSG00000159111']    
     
     if len(gene_ids) == 0:
-        gene_ids = helper.get_gene_ids(f_index,info)
+        gene_ids = helper.get_gene_ids(f_index,data_info)
 
 
     print(len(gene_ids),'genes to be testing ...')
@@ -167,9 +162,9 @@ def main():
         if resume and (idx in gene_ids_done):
             continue
         
-        # memory issue #todo
+        ### memory issue #todo
         n_reads_sum = 0
-        for run_name in info['run_names']:
+        for run_name in data_info.keys():
             try:
                 n_reads = df_readcount[run_name].loc[idx]
             except KeyError:
@@ -178,10 +173,10 @@ def main():
                 n_reads_sum += n_reads
         if n_reads_sum > 10000:
             continue
-        #
+        ###
         
         data_dict = dict()
-        for run_name in info['run_names']:
+        for run_name in data_info.keys():
             try:
                 pos_start,pos_end = f_index[run_name][idx]
             except KeyError:
@@ -197,7 +192,7 @@ def main():
         out_paths['model_filepath'] = os.path.join(paths['models'],'%s.hdf5' %idx)
         #
         # if data_dict[run_name][idx] is not None: # todo: remove this line. Fix in dataprep
-        task_queue.put((idx, data_dict, info, method, criteria, model_kmer, prior_params, out_paths,save_models,save_table)) # Blocked if necessary until a free slot is available.
+        task_queue.put((idx, data_dict, data_info, method, criteria, model_kmer, prior_params, out_paths,save_models,save_table)) # Blocked if necessary until a free slot is available.
 
         
     # Put the stop task into task_queue.
@@ -207,7 +202,7 @@ def main():
     task_queue.join()
 
     # Close data files
-    for run_name in info['run_names']:
+    for run_name in data_info.keys():
         f_data[run_name].close()   
         
     if save_table:

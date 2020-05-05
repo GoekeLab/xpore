@@ -9,19 +9,18 @@ with open('README.md') as f:
     README = f.read()
 
 setup(
-    author="Naruemon Pratanwanich (Ploy)",
+    author="Ploy N. Pratanwanich",
     maintainer_email="naruemon.p@chula.ac.th",
     name=__pkg_name__,
     license="MIT",
     description='xpore is a python package for Nanopore data analysis.',
-    version='v0.0.1',
+    version='v0.1.0',
     long_description=README,
-    url='https://github.com/ProML/xpore',
+    url='https://github.com/GoekeLab/xpore',
     packages=find_packages(),
     python_requires=">=3.5",
     install_requires=[],
     entry_points={'console_scripts': ["xpore-dataprep={}.scripts.dataprep:main".format(__pkg_name__),
-                                      "xpore-backdoor={}.scripts.backdoor:main".format(__pkg_name__),
                                       "xpore-diffmod={}.scripts.diffmod:main".format(__pkg_name__)]},
     classifiers=[
         # Trove classifiers
