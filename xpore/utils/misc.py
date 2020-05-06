@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import os
 
 
@@ -32,7 +32,7 @@ def makedirs(main_dir, sub_dirs=None, opt='depth'):
 
 
 def str_decode(df):
-    str_df = df.select_dtypes([numpy.object])
+    str_df = df.select_dtypes([np.object])
     str_df = str_df.stack().str.decode('utf-8').unstack()
     for col in str_df:
         df[col] = str_df[col]
@@ -40,7 +40,7 @@ def str_decode(df):
 
 
 def str_encode(df):
-    str_df = df.select_dtypes([numpy.object])
+    str_df = df.select_dtypes([np.object])
     str_df = str_df.stack().str.encode('utf-8').unstack()
     for col in str_df:
         df[col] = str_df[col]

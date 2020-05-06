@@ -1,6 +1,6 @@
 import argparse
-import numpy
-import pandas
+import numpy as np
+import pandas as pd
 import os
 import multiprocessing 
 import h5py
@@ -8,7 +8,6 @@ import csv
 import json
 import pysam #0-based leftmost coordinate
 from pyensembl import EnsemblRelease
-from tqdm import tqdm
 from operator import itemgetter
 from collections import defaultdict
 
@@ -39,14 +38,14 @@ def get_args():
     return parser.parse_args()
 
 def combine(read_name,eventalign_per_read,out_paths,locks):
-    eventalign_result = pandas.DataFrame.from_records(eventalign_per_read)
+    eventalign_result = pd.DataFrame.from_records(eventalign_per_read)
 
     cond_successfully_eventaligned = eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
     eventalign_result = eventalign_result[cond_successfully_eventaligned]
 
     keys = ['read_index','contig','position','reference_kmer'] # for groupby
-    eventalign_result['length'] = pandas.to_numeric(eventalign_result['end_idx'])-pandas.to_numeric(eventalign_result['start_idx'])
-    eventalign_result['sum_norm_mean'] = pandas.to_numeric(eventalign_result['event_level_mean']) * eventalign_result['length']
+    eventalign_result['length'] = pd.to_numeric(eventalign_result['end_idx'])-pd.to_numeric(eventalign_result['start_idx'])
+    eventalign_result['sum_norm_mean'] = pd.to_numeric(eventalign_result['event_level_mean']) * eventalign_result['length']
 
     eventalign_result = eventalign_result.groupby(keys)  
     sum_norm_mean = eventalign_result['sum_norm_mean'].sum() 
@@ -54,18 +53,18 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     end_idx = eventalign_result['end_idx'].max()
     total_length = eventalign_result['length'].sum()
 
-    eventalign_result = pandas.concat([start_idx,end_idx],axis=1)
+    eventalign_result = pd.concat([start_idx,end_idx],axis=1)
     eventalign_result['norm_mean'] = sum_norm_mean/total_length
 
     eventalign_result.reset_index(inplace=True)
 
     eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]
-    eventalign_result['transcriptomic_position'] = pandas.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
+    eventalign_result['transcriptomic_position'] = pd.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
     # eventalign_result = misc.str_encode(eventalign_result)
     eventalign_result['read_id'] = [read_name]*len(eventalign_result)
 
     # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx']
-    # features_dtype = numpy.dtype([('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'), ('end_idx', '<i8')])
+    # features_dtype = np.dtype([('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'), ('end_idx', '<i8')])
     features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean']
 
     df_events_per_read = eventalign_result[features]
@@ -77,7 +76,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     with locks['hdf5'], h5py.File(out_paths['hdf5'],'a') as hf:
         for tx_id,read_id in df_events_per_read.index.unique():
             df2write = df_events_per_read.loc[[tx_id,read_id],:].reset_index() 
-            events = numpy.rec.fromrecords(misc.str_encode(df2write[features]),names=features) #,dtype=features_dtype
+            events = np.rec.fromrecords(misc.str_encode(df2write[features]),names=features) #,dtype=features_dtype
 
             hf_tx = hf.require_group('%s/%s' %(tx_id,read_id))
             if 'events' in hf_tx:
@@ -154,7 +153,7 @@ def count_reads(version,bamtx_filepath,out_dir):
 
     rows = []
     profile = defaultdict(int)
-    for contig in tqdm(bam_file.references):
+    for contig in bam_file.references:
         profile['n_contigs'] += 1
         n_reads = bam_file.count(contig=contig,read_callback=lambda r: (not r.is_secondary) and (not r.is_qcfail) and ((r.flag==0) | (r.flag==16)) ) #flag: 0(+),16(-) 
         if n_reads == 0:
@@ -173,7 +172,7 @@ def count_reads(version,bamtx_filepath,out_dir):
             g_name = grch38.gene_name_of_gene_id(g_id)
             rows += [[chromosome_id,g_id,g_name,tx_id,n_reads]]
 
-    df_count = pandas.DataFrame.from_records(rows,columns=['chr','gene_id','gene_name','transcript_id','n_reads'])
+    df_count = pd.DataFrame.from_records(rows,columns=['chr','gene_id','gene_name','transcript_id','n_reads'])
     
     # write to file.
     read_count_filepath = os.path.join(out_dir,'read_count.csv')
@@ -192,7 +191,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
     # Writing the starting of the files.
     gene_ids_done = []
     if resume and os.path.exists(out_paths['index']):
-        df_index = pandas.read_csv(out_paths['index'],sep=',')
+        df_index = pd.read_csv(out_paths['index'],sep=',')
         gene_ids_done = list(df_index['gene_id'].unique())
     else:
         with open(out_paths['json'],'w') as f:
@@ -224,7 +223,7 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
             gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id) # no mapping for gene_id
             if not os.path.exists(gt_mapping_filepath):
                 continue
-            df_gt = pandas.read_csv(gt_mapping_filepath)
+            df_gt = pd.read_csv(gt_mapping_filepath)
 
             keys = zip(df_gt['tx_id'], df_gt['tx_pos'])
             values = zip(df_gt['chr'], df_gt['g_id'], df_gt['g_pos'], df_gt['kmer'])
@@ -304,23 +303,23 @@ def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):
         tx_ids = [tx_id.decode('UTF-8') for tx_id in events_per_read['transcript_id']]
         tx_positions = events_per_read['transcriptomic_position']
         
-        genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- numpy structured array of 'chr','gene_id','genomic_position','kmer'
-        genomic_coordinate = numpy.array(genomic_coordinate,dtype=numpy.dtype([('chr','<U2'),('gene_id','<U15'),('genomic_position','<i4'),('g_kmer','<U5')]))
+        genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- np structured array of 'chr','gene_id','genomic_position','kmer'
+        genomic_coordinate = np.array(genomic_coordinate,dtype=np.dtype([('chr','<U2'),('gene_id','<U15'),('genomic_position','<i4'),('g_kmer','<U5')]))
         # ===== 
 
         events += [events_per_read]
         genomic_coordinates += [genomic_coordinate]
         n_events_per_read = len(events_per_read)
         
-    events = numpy.concatenate(events)
-    genomic_coordinates = numpy.concatenate(genomic_coordinates)
+    events = np.concatenate(events)
+    genomic_coordinates = np.concatenate(genomic_coordinates)
    
     # Sort and split 
-    idx_sorted = numpy.lexsort((events['reference_kmer'],genomic_coordinates['genomic_position'],genomic_coordinates['gene_id']))
-    key_tuples, index = numpy.unique(list(zip(genomic_coordinates['gene_id'][idx_sorted],genomic_coordinates['genomic_position'][idx_sorted],events['reference_kmer'][idx_sorted])),return_index = True,axis=0) #'chr',
-    y_arrays = numpy.split(events['norm_mean'][idx_sorted], index[1:])
-    read_id_arrays = numpy.split(events['read_id'][idx_sorted], index[1:])
-    g_kmer_arrays = numpy.split(genomic_coordinates['g_kmer'][idx_sorted], index[1:])
+    idx_sorted = np.lexsort((events['reference_kmer'],genomic_coordinates['genomic_position'],genomic_coordinates['gene_id']))
+    key_tuples, index = np.unique(list(zip(genomic_coordinates['gene_id'][idx_sorted],genomic_coordinates['genomic_position'][idx_sorted],events['reference_kmer'][idx_sorted])),return_index = True,axis=0) #'chr',
+    y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
+    read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
+    g_kmer_arrays = np.split(genomic_coordinates['g_kmer'][idx_sorted], index[1:])
 
     # Prepare
     # print('Reformating the data for each genomic position ...')
@@ -380,7 +379,7 @@ def main():
     # (2) Generate read count from the bamtx file.
     read_count_filepath = os.path.join(out_dir,'read_count.csv')
     if os.path.exists(read_count_filepath):
-        df_count = pandas.read_csv(read_count_filepath)
+        df_count = pd.read_csv(read_count_filepath)
     else:
         df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
 

@@ -1,7 +1,6 @@
-import numpy
+import numpy as np
 import h5py
 import os
-from tqdm import tqdm  # progress bar.
 from collections import OrderedDict, defaultdict
 import itertools
 import scipy.stats
@@ -16,7 +15,7 @@ def get_dummies(x):
     for label in labels:
         X += [x == label]
     # labels = [label.encode('UTF-8') for label in labels]
-    return numpy.array(X).T, labels
+    return np.array(X).T, labels
 
 
 def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=False): 
@@ -58,10 +57,10 @@ def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=F
                 condition_labels += [condition_name]*n_reads_per_run
                 run_labels += [run_name]*n_reads_per_run
 
-        y = numpy.array(y)
-        read_ids = numpy.array(read_ids)
-        condition_labels = numpy.array(condition_labels)
-        run_labels = numpy.array(run_labels)
+        y = np.array(y)
+        read_ids = np.array(read_ids)
+        condition_labels = np.array(condition_labels)
+        run_labels = np.array(run_labels)
         
         # Filter those sites that don't have enough reads.
         if len(y) == 0:  # no reads at all.
@@ -74,7 +73,7 @@ def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=F
                     conditions_incl += [condition_name]
         else:
             for condition_name in unique_condition_names:
-                if (numpy.array(n_reads[condition_name]) >= min_count).any() and (numpy.array(n_reads[condition_name]) <= max_count).any():
+                if (np.array(n_reads[condition_name]) >= min_count).any() and (np.array(n_reads[condition_name]) <= max_count).any():
                     conditions_incl += [condition_name]
                     
         if len(conditions_incl) < 2:
@@ -93,7 +92,7 @@ def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=F
 
 def save_result_table(table, out_filepath):
     out_file = h5py.File(out_filepath, 'w')
-    out_file['result'] = table  # Structured numpy array.
+    out_file['result'] = table  # Structured np array.
     out_file.close()
 
 
@@ -109,7 +108,7 @@ def save_models(models, model_filepath):  # per gene/transcript
         Path to save the models.
     """
     model_file = h5py.File(model_filepath, 'w')
-    for model_key, model in models.items():  # tqdm(models.items()):
+    for model_key, model in models.items():  
         idx, position, kmer = model_key
 
         position = str(position)
@@ -158,7 +157,7 @@ def load_models(model_filepath):  # per gene/transcript #Todo: refine.
     models = {}
     data = defaultdict(dict)
     for idx in model_file:
-        for position in tqdm(model_file[idx]):
+        for position in model_file[idx]:
             inits = {'info': None, 'nodes': {'x': {}, 'y': {}, 'w': {}, 'mu_tau': {}, 'z': {}}}
             kmer = model_file[idx][position].attrs['kmer']
             key = (idx, position, kmer)
@@ -279,13 +278,13 @@ def generate_result_table_old(models, data_info):  # per idx (gene/transcript)
             else:
                 cond1, cond2 = cond2run_dict[cond1], cond2run_dict[cond2]
             if any(r in model_group_names for r in cond1) and any(r in model_group_names for r in cond2):
-                w_cond1 = w[numpy.isin(model_group_names, cond1), 0].flatten()
-                w_cond2 = w[numpy.isin(model_group_names, cond2), 0].flatten()
-                n_cond1 = coverage[numpy.isin(model_group_names, cond1)]
-                n_cond2 = coverage[numpy.isin(model_group_names, cond2)]
+                w_cond1 = w[np.isin(model_group_names, cond1), 0].flatten()
+                w_cond2 = w[np.isin(model_group_names, cond2), 0].flatten()
+                n_cond1 = coverage[np.isin(model_group_names, cond1)]
+                n_cond2 = coverage[np.isin(model_group_names, cond2)]
 
                 z_score, p_w_mod = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
-                ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
+                ws_mean_diff = abs(np.mean(w_cond1)-np.mean(w_cond2))
                 abs_z_score = abs(z_score)
 
                 stats_pairwise += [p_w_mod, ws_mean_diff, abs_z_score]
@@ -301,13 +300,13 @@ def generate_result_table_old(models, data_info):  # per idx (gene/transcript)
                 else:
                     cond = cond2run_dict[cond]
                 if any(r in model_group_names for r in cond):
-                    w_cond1 = w[numpy.isin(model_group_names, cond), 0].flatten()
-                    w_cond2 = w[~numpy.isin(model_group_names, cond), 0].flatten()
-                    n_cond1 = coverage[numpy.isin(model_group_names, cond)]
-                    n_cond2 = coverage[~numpy.isin(model_group_names, cond)]
+                    w_cond1 = w[np.isin(model_group_names, cond), 0].flatten()
+                    w_cond2 = w[~np.isin(model_group_names, cond), 0].flatten()
+                    n_cond1 = coverage[np.isin(model_group_names, cond)]
+                    n_cond2 = coverage[~np.isin(model_group_names, cond)]
 
                     z_score, p_w_mod = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
-                    ws_mean_diff = abs(numpy.mean(w_cond1)-numpy.mean(w_cond2))
+                    ws_mean_diff = abs(np.mean(w_cond1)-np.mean(w_cond2))
                     abs_z_score = abs(z_score)
 
                     stats_one_vs_all += [p_w_mod, ws_mean_diff, abs_z_score]
@@ -329,9 +328,9 @@ def generate_result_table_old(models, data_info):  # per idx (gene/transcript)
             names = run_names
         for name in names:
             if name in model_group_names:
-                w_min_ordered += list(w_min[numpy.isin(model_group_names, name)])
-                w_max_ordered += list(w_max[numpy.isin(model_group_names, name)])
-                coverage_ordered += list(coverage[numpy.isin(model_group_names, name)])
+                w_min_ordered += list(w_min[np.isin(model_group_names, name)])
+                w_max_ordered += list(w_max[np.isin(model_group_names, name)])
+                coverage_ordered += list(coverage[np.isin(model_group_names, name)])
             else:
                 w_min_ordered += [None]
                 w_max_ordered += [None]
@@ -417,7 +416,7 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         N0 = N[:, 0].squeeze()
         N1 = N[:, 1].squeeze()
         w0 = w[:, 0].squeeze()
-        coverage = numpy.sum(model.nodes['y'].params['N'], axis=-1)  # GK => G # n_reads per group
+        coverage = np.sum(model.nodes['y'].params['N'], axis=-1)  # GK => G # n_reads per group
 
         p_overlap, list_cdf_at_intersections = stats.calc_prob_overlapping(mu, sigma2)
 
@@ -449,13 +448,13 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
             else:
                 cond1, cond2 = cond2run_dict[cond1], cond2run_dict[cond2]
             if any(r in model_group_names for r in cond1) and any(r in model_group_names for r in cond2):
-                w_cond1 = w[numpy.isin(model_group_names, cond1), cluster_idx['mod']].flatten()
-                w_cond2 = w[numpy.isin(model_group_names, cond2), cluster_idx['mod']].flatten()
-                n_cond1 = coverage[numpy.isin(model_group_names, cond1)]
-                n_cond2 = coverage[numpy.isin(model_group_names, cond2)]
+                w_cond1 = w[np.isin(model_group_names, cond1), cluster_idx['mod']].flatten()
+                w_cond2 = w[np.isin(model_group_names, cond2), cluster_idx['mod']].flatten()
+                n_cond1 = coverage[np.isin(model_group_names, cond1)]
+                n_cond2 = coverage[np.isin(model_group_names, cond2)]
 
                 z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2) # two=tailed
-                w_mod_mean_diff = numpy.mean(w_cond1)-numpy.mean(w_cond2)
+                w_mod_mean_diff = np.mean(w_cond1)-np.mean(w_cond2)
 
                 stats_pairwise += [p_ws, w_mod_mean_diff, z_score]
             else:
@@ -470,13 +469,13 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
                 else:
                     cond = cond2run_dict[cond]
                 if any(r in model_group_names for r in cond):
-                    w_cond1 = w[numpy.isin(model_group_names, cond), cluster_idx['mod']].flatten()
-                    w_cond2 = w[~numpy.isin(model_group_names, cond), cluster_idx['mod']].flatten()
-                    n_cond1 = coverage[numpy.isin(model_group_names, cond)]
-                    n_cond2 = coverage[~numpy.isin(model_group_names, cond)]
+                    w_cond1 = w[np.isin(model_group_names, cond), cluster_idx['mod']].flatten()
+                    w_cond2 = w[~np.isin(model_group_names, cond), cluster_idx['mod']].flatten()
+                    n_cond1 = coverage[np.isin(model_group_names, cond)]
+                    n_cond2 = coverage[~np.isin(model_group_names, cond)]
 
                     z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
-                    w_mod_mean_diff = numpy.mean(w_cond1)-numpy.mean(w_cond2)
+                    w_mod_mean_diff = np.mean(w_cond1)-np.mean(w_cond2)
 
                     stats_one_vs_all += [p_ws, w_mod_mean_diff, abs_z_score]
                 else:
@@ -490,8 +489,8 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
             names = run_names
         for name in names:
             if name in model_group_names:
-                w_mod_ordered += list(w_mod[numpy.isin(model_group_names, name)])
-                coverage_ordered += list(coverage[numpy.isin(model_group_names, name)])
+                w_mod_ordered += list(w_mod[np.isin(model_group_names, name)])
+                coverage_ordered += list(coverage[np.isin(model_group_names, name)])
             else:
                 w_mod_ordered += [None]
                 coverage_ordered += [None]
