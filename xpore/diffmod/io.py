@@ -178,7 +178,13 @@ def load_models(model_filepath):  # per gene/transcript #Todo: refine.
 
     return models,data  # {(idx,position,kmer): GMM obj}
 
-def get_result_table_header(data_info,pooling=False):
+def get_ordered_condition_run_names(data_info):
+    unique_condition_names = {info['condition_name'] for _, info in data_info.items()}
+    unique_condition_names_sorted = sorted(list(unique_condition_names))
+    unique_run_names_sorted = sorted(list(set(list(data_info.keys()))))
+    return unique_condition_names_sorted,unique_run_names_sorted
+
+def get_result_table_header(data_info,method):
     condition_names,run_names = get_ordered_condition_run_names(data_info)
     ### stats header
     stats_pairwise = []
@@ -196,7 +202,7 @@ def get_result_table_header(data_info,pooling=False):
     # header += ['p_overlap']
     # header += ['x_x1', 'y_x1', 'x_x2', 'y_x2']
     
-    if pooling:
+    if method['pooling']:
         names = condition_names
     else:
         names = run_names
@@ -212,167 +218,10 @@ def get_result_table_header(data_info,pooling=False):
     if len(condition_names) > 2:
         header += stats_one_vs_all
     ###
-
+    
+    if method['prefiltering']:
+        header += [method['prefiltering']['method']]
     return header
-
-def get_ordered_condition_run_names(data_info):
-    unique_condition_names = {info['condition_name'] for _, info in data_info.items()}
-    unique_condition_names_sorted = sorted(list(unique_condition_names))
-    unique_run_names_sorted = sorted(list(set(list(data_info.keys()))))
-    return unique_condition_names_sorted,unique_run_names_sorted
-
-
-def generate_result_table_old(models, data_info):  # per idx (gene/transcript)
-    """
-    Generate a table containing learned model parameters and statistic tests.
-
-    Parameters
-    ----------
-    models
-        Learned models for individual genomic positions of a gene.
-    group_labels
-        Labels of samples.
-    data_inf
-        Dict
-
-    Returns
-    -------
-    table
-        List of tuples.
-    """
-
-    ###
-    condition_names,run_names = get_ordered_condition_run_names(data_info) # information from the config file used for modelling.
-    cond2run_dict = defaultdict(list)
-    for run_name, info in data_info.items():
-        cond2run_dict[info['condition_name']] += [run_name]        
-
-
-    ###
-
-    ###
-    table = []
-    for key, model in models.items():
-        idx, position, kmer = key
-        mu = model.nodes['mu_tau'].expected()  # K
-        sigma2 = 1./model.nodes['mu_tau'].expected(var='gamma')  # K
-        var_mu = model.nodes['mu_tau'].variance(var='normal')  # K
-        # mu = model.nodes['y'].params['mean']
-        # sigma2 = model.nodes['y'].params['variance']
-        w = model.nodes['w'].expected()  # GK
-        N = model.nodes['y'].params['N'].round()  # GK
-        N0 = N[:, 0].squeeze()
-        N1 = N[:, 1].squeeze()
-        w0 = w[:, 0].squeeze()
-        coverage = numpy.sum(model.nodes['y'].params['N'], axis=-1)  # GK => G # n_reads per group
-
-        p_overlap, list_cdf_at_intersections = stats.calc_prob_overlapping(mu, sigma2)
-
-        model_group_names = model.nodes['x'].params['group_names'] #condition_names if pooling, run_names otherwise.
-        
-        ### calculate stats_pairwise
-        stats_pairwise = []
-        for cond1, cond2 in itertools.combinations(condition_names, 2):
-            if model.method['pooling']:
-                cond1, cond2 = [cond1], [cond2]
-            else:
-                cond1, cond2 = cond2run_dict[cond1], cond2run_dict[cond2]
-            if any(r in model_group_names for r in cond1) and any(r in model_group_names for r in cond2):
-                w_cond1 = w[np.isin(model_group_names, cond1), 0].flatten()
-                w_cond2 = w[np.isin(model_group_names, cond2), 0].flatten()
-                n_cond1 = coverage[np.isin(model_group_names, cond1)]
-                n_cond2 = coverage[np.isin(model_group_names, cond2)]
-
-                z_score, p_w_mod = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
-                ws_mean_diff = abs(np.mean(w_cond1)-np.mean(w_cond2))
-                abs_z_score = abs(z_score)
-
-                stats_pairwise += [p_w_mod, ws_mean_diff, abs_z_score]
-            else:
-                stats_pairwise += [None, None, None]
-
-        if len(condition_names) > 2:
-            ### calculate stats_one_vs_all
-            stats_one_vs_all = []
-            for cond in condition_names:
-                if model.method['pooling']:
-                    cond = [cond]
-                else:
-                    cond = cond2run_dict[cond]
-                if any(r in model_group_names for r in cond):
-                    w_cond1 = w[np.isin(model_group_names, cond), 0].flatten()
-                    w_cond2 = w[~np.isin(model_group_names, cond), 0].flatten()
-                    n_cond1 = coverage[np.isin(model_group_names, cond)]
-                    n_cond2 = coverage[~np.isin(model_group_names, cond)]
-
-                    z_score, p_w_mod = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
-                    ws_mean_diff = abs(np.mean(w_cond1)-np.mean(w_cond2))
-                    abs_z_score = abs(z_score)
-
-                    stats_one_vs_all += [p_w_mod, ws_mean_diff, abs_z_score]
-                else:
-                    stats_one_vs_all += [None, None, None]
-
-        ### lower, higher clusters
-        w_min = w0
-        if mu[1] < mu[0]:
-            mu = mu[::-1]
-            sigma2 = sigma2[::-1]
-            w_min = 1-w0
-        w_max = 1-w_min
-        ###
-        w_min_ordered, w_max_ordered, coverage_ordered = [], [], [] # ordered by conditon_names / run_names based on headers.        
-        if model.method['pooling']:
-            names = condition_names
-        else:
-            names = run_names
-        for name in names:
-            if name in model_group_names:
-                w_min_ordered += list(w_min[np.isin(model_group_names, name)])
-                w_max_ordered += list(w_max[np.isin(model_group_names, name)])
-                coverage_ordered += list(coverage[np.isin(model_group_names, name)])
-            else:
-                w_min_ordered += [None]
-                w_max_ordered += [None]
-                coverage_ordered += [None]
-        
-        ### Cluster assignment ###
-        conf_mu_min,conf_mu_max = calculate_confidence_cluster_assignment(mu[0],model.kmer_signal),calculate_confidence_cluster_assignment(mu[1],model.kmer_signal)
-        if conf_mu_min > conf_mu_max:
-            mu_assigned = [mu[0],mu[1]] 
-            sigma2_assigned = [sigma2[0],sigma2[1]] 
-            w_mod_ordered = w_max_ordered
-            conf_mu = [conf_mu_min, conf_mu_max]
-            mod_assignment = ['higher']
-        else:
-            mu_assigned = [mu[1],mu[0]] 
-            sigma2_assigned = [sigma2[1],sigma2[0]] 
-            w_mod_ordered = w_min_ordered
-            conf_mu = [conf_mu_max, conf_mu_min]
-            mod_assignment = ['lower']
-        #
-        
-        ###
-        ### prepare values to write
-        row = [idx, position, kmer]
-        # row += [p_overlap]
-        # row += list_cdf_at_intersections
-        row += list(coverage_ordered)
-        row += mu_assigned + sigma2_assigned + conf_mu + mod_assignment
-        row += list(w_mod_ordered)
-
-        row += stats_pairwise
-        if len(condition_names) > 2:
-            row += stats_one_vs_all
-
-        ### Filtering those positions with a nearly single distribution.
-        cdf_threshold = 0.1
-        x_x1, y_x1, x_x2, y_x2 = list_cdf_at_intersections
-        is_not_inside = ((y_x1 < cdf_threshold) & (x_x1 < cdf_threshold)) | ((y_x2 < cdf_threshold) & (x_x2 < cdf_threshold)) | (( (1-y_x1) < cdf_threshold) & ((1-x_x1) < cdf_threshold)) | (( (1-y_x2) < cdf_threshold) & ((1-x_x2) < cdf_threshold))
-        if (p_overlap <= 0.5) and (is_not_inside):
-            table += [tuple(row)]
-
-    return table
 
 def generate_result_table(models, data_info):  # per idx (gene/transcript)
     """
@@ -398,13 +247,11 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
     cond2run_dict = defaultdict(list)
     for run_name, info in data_info.items():
         cond2run_dict[info['condition_name']] += [run_name]        
-
-
     ###
 
     ###
     table = []
-    for key, model in models.items():
+    for key, (model,prefiltering) in models.items():
         idx, position, kmer = key
         mu = model.nodes['mu_tau'].expected()  # K
         sigma2 = 1./model.nodes['mu_tau'].expected(var='gamma')  # K
@@ -508,6 +355,8 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         if len(condition_names) > 2:
             row += stats_one_vs_all
 
+        if prefiltering is not None:
+            row += [prefiltering[model.method['prefiltering']['method']]]
         ### Filtering those positions with a nearly single distribution.
         cdf_threshold = 0.1
         x_x1, y_x1, x_x2, y_x2 = list_cdf_at_intersections

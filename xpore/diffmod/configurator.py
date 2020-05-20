@@ -27,18 +27,19 @@ class Configurator(object):
         return self.yaml['criteria']
         
     def get_method(self):
-        method = {}
-        if 'priors' not in self.yaml.keys():
-            method['name'] = 'gmm'
-            method['max_iters'] = 500
-            method['stopping_criteria'] = 0.0001
-            method['compute_elbo'] = True
-            method['verbose'] = False
-            method['update'] = 'z','y','w','mu_tau'
-            method['pooling'] = False
+        if 'method' not in self.yaml.keys():
+            method = {}
         else:
-            pass #todo
-
+            method = self.yaml['method']
+        
+        method.setdefault('name', 'gmm')
+        method.setdefault('max_iters', 500)
+        method.setdefault('stopping_criteria', 0.0001)
+        method.setdefault('compute_elbo', True)
+        method.setdefault('verbose', False)
+        method.setdefault('update', ['z','y','w','mu_tau'])
+        method.setdefault('pooling', False)
+        method.setdefault('prefiltering',False)
         return method
     
     def get_priors(self):

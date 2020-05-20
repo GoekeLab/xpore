@@ -6,7 +6,7 @@ import scipy.stats
 
 class GMM(object):  
     """
-    1D 2-Gaussian mixture model.
+    1D multi-sample 2-Gaussian mixture model.
     """
     def __init__(self, method=None, data={'x': None, 'y': None, 'condition_names': None, 'run_names': None}, inits={'info': None, 'nodes': {'x': None, 'y': None, 'w': None, 'mu_tau': None, 'z': None}}, priors={'mu_tau': None, 'w': None},kmer_signal=None):
         """
@@ -21,17 +21,18 @@ class GMM(object):
         priors:
             Sth.
         """
+        
         self.nodes = dict()
         self.aux_params = dict()
         self.K = 2  # modified and unmodified
         self.method = method
         self.kmer_signal = kmer_signal
-
+        
         self.__init_info(inits['info'])
 
         data_node_x = None
         if (data['x'] is not None) and (data['y'] is not None) and (data['r'] is not None):
-
+            
             self.info['n_reads'] = len(data['y'])
 
             # inits

@@ -1,5 +1,5 @@
 import argparse
-import numpy
+import numpy as np
 import pandas
 import os
 import multiprocessing 
@@ -11,6 +11,7 @@ from . import helper
 from ..diffmod.configurator import Configurator
 from ..diffmod.gmm import GMM
 from ..diffmod import io
+from ..diffmod.statstest import StatsTest
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -31,10 +32,11 @@ def get_args():
         
 def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_params, out_paths, save_models, save_table,locks):
     """
+    Run the model on each posiiton across the given idx.
     """
     data = io.load_data(idx,data_dict,data_info,min_count=criteria['read_count_min'],max_count=criteria['read_count_max'],pooling=method['pooling']) 
     models = dict()
-    for key,data_at_pos in data.items():
+    for key,data_at_pos in data.items(): # For each position
         idx, pos, kmer = key
         kmer_signal = {'mean':model_kmer.loc[kmer,'model_mean'],'std':model_kmer.loc[kmer,'model_stdv']}
         kmer_signal['tau'] = 1./(kmer_signal['std']**2)
@@ -57,20 +59,27 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
             priors['mu_tau']['beta'] += [prior_params['mu_tau']['beta_scale'][k]*1./kmer_signal['tau']]
         
         for k,v in priors['mu_tau'].items():
-            priors['mu_tau'][k] = numpy.array(v)
+            priors['mu_tau'][k] = np.array(v)
         
-        priors['w']['concentration'] = numpy.ones([n_groups,K])*1. #GK
+        priors['w']['concentration'] = np.ones([n_groups,K])*1. #GK
         priors['w']['concentration'][:,0] = float(prior_params['w']['concentration'][0])
         priors['w']['concentration'][:,1] = float(prior_params['w']['concentration'][1])
         ###
 
-        ### Fit models.
-        models[key] = GMM(method,data_at_pos,priors=priors,kmer_signal=kmer_signal).fit()
+        ### Fit a model.
+        if method['prefiltering']:
+            pval = StatsTest(data_at_pos).fit(method=method['prefiltering']['method'])
+            if np.isnan(pval) | (pval < method['prefiltering']['threshold']):
+                prefiltering = {method['prefiltering']['method']:pval}
+                models[key] = GMM(method,data_at_pos,priors=priors,kmer_signal=kmer_signal).fit(), prefiltering
+        else:
+            models[key] = GMM(method,data_at_pos,priors=priors,kmer_signal=kmer_signal).fit(), None
+
         
-    if save_models: #todo: 
+    if save_models & (len(models)>0): #todo: 
         print(out_paths['model_filepath'],idx)
         io.save_models(models,out_paths['model_filepath'])
-    if save_table:
+    if save_table & (len(models)>0):
         # Generating the result table.
         table = io.generate_result_table(models,data_info)
         with locks['table'], open(out_paths['table'],'a') as f:
@@ -124,7 +133,7 @@ def main():
             gene_ids_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]  
         else:
             with open(out_paths['table'],'w') as f:
-                csv.writer(f,delimiter=',').writerow(io.get_result_table_header(data_info,method['pooling']))
+                csv.writer(f,delimiter=',').writerow(io.get_result_table_header(data_info,method))
             with open(out_paths['log'],'w') as f:
                 f.write(helper.decor_message('diffmod'))
 
