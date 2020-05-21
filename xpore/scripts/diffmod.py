@@ -25,7 +25,7 @@ def get_args():
     parser.add_argument('--save_models', dest='save_models', help='Save the models.',default=False,action='store_true') # todo
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
     
-    parser.add_argument('--genes', dest='genes', help='Gene ids.',default=[],nargs='*')
+    parser.add_argument('--ids', dest='ids', help='Gene ids or transcript ids.',default=[],nargs='*')
 
 
     return parser.parse_args()
@@ -101,7 +101,7 @@ def main():
     save_models = args.save_models
     save_table = args.save_table
     resume = args.resume
-    gene_ids = args.genes
+    ids = args.ids
 
     config = Configurator(config_filepath) 
     paths = config.get_paths()
@@ -127,10 +127,10 @@ def main():
     task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
 
     # Writing the starting of the files.
-    gene_ids_done = []
+    ids_done = []
     if save_table:
         if resume and os.path.exists(out_paths['log']):
-            gene_ids_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]  
+            ids_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]  
         else:
             with open(out_paths['table'],'w') as f:
                 csv.writer(f,delimiter=',').writerow(io.get_result_table_header(data_info,method))
@@ -148,10 +148,10 @@ def main():
     for run_name, info in data_info.items():
         # Read index files
         df_index = pandas.read_csv(os.path.join(info['dirpath'],'data.index'),sep=',') 
-        f_index[run_name] = dict(zip(df_index['gene_id'],zip(df_index['start'],df_index['end'])))
+        f_index[run_name] = dict(zip(df_index['idx'],zip(df_index['start'],df_index['end'])))
         
         # Read readcount files
-        df_readcount[run_name] = pandas.read_csv(os.path.join(info['dirpath'],'read_count.csv')).groupby('gene_id')['n_reads'].sum() # todo: data.readcount
+        # df_readcount[run_name] = pandas.read_csv(os.path.join(info['dirpath'],'read_count.csv')).groupby('gene_id')['n_reads'].sum() # todo: data.readcount
         
         # Open data files
         f_data[run_name] = open(os.path.join(info['dirpath'],'data.json'),'r') 
@@ -161,27 +161,27 @@ def main():
 #    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
     # gene_ids = ['ENSG00000159111']    
     
-    if len(gene_ids) == 0:
-        gene_ids = helper.get_gene_ids(f_index,data_info)
+    if len(ids) == 0:
+        ids = helper.get_ids(f_index,data_info)
 
 
-    print(len(gene_ids),'genes to be testing ...')
+    print(len(ids),'ids to be testing ...')
     
-    for idx in gene_ids:
-        if resume and (idx in gene_ids_done):
+    for idx in ids:
+        if resume and (idx in ids_done):
             continue
         
         ### memory issue #todo
-        n_reads_sum = 0
-        for run_name in data_info.keys():
-            try:
-                n_reads = df_readcount[run_name].loc[idx]
-            except KeyError:
-                continue
-            else:
-                n_reads_sum += n_reads
-        if n_reads_sum > 10000:
-            continue
+        # n_reads_sum = 0
+        # for run_name in data_info.keys():
+        #     try:
+        #         n_reads = df_readcount[run_name].loc[idx]
+        #     except KeyError:
+        #         continue
+        #     else:
+        #         n_reads_sum += n_reads
+        # if n_reads_sum > 10000:
+        #     continue
         ###
         
         data_dict = dict()
@@ -194,7 +194,8 @@ def main():
                 # print(idx,run_name,pos_start,pos_end,df_readcount[run_name].loc[idx])
                 f_data[run_name].seek(pos_start,0)
                 json_str = f_data[run_name].read(pos_end-pos_start)
-                json_str = '{%s}' %json_str
+                # print(json_str[:50])
+                # json_str = '{%s}' %json_str # used for old dataprep
                 data_dict[run_name] = json.loads(json_str) # A data dict for each gene.
                 
         # tmp

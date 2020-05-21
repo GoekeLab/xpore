@@ -20,8 +20,8 @@ def get_args():
     # Required arguments
     parser.add_argument('--eventalign', dest='eventalign', help='Eventalign filepath from nanopolish.',required=True)
     parser.add_argument('--summary', dest='summary', help='Summary filepath from nanopolish.',required=True)
-    parser.add_argument('--bamtx', dest='bamtx', help='bamtx filepath.',required=True)
-    parser.add_argument('--mapping', dest='mapping', help='gene-transcript mapping directory.',required=True)
+    parser.add_argument('--bamtx', dest='bamtx', help='bamtx filepath.',required=False)
+    parser.add_argument('--mapping', dest='mapping', help='gene-transcript mapping directory.',required=False)
     parser.add_argument('--out_dir', dest='out_dir', help='Output directory.',required=True)
 
 
@@ -33,8 +33,6 @@ def get_args():
     parser.add_argument('--read_count_max', dest='read_count_max', help='Maximum of read counts per gene.',type=int, default=5000)
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
 
-
-    
     return parser.parse_args()
 
 def combine(read_name,eventalign_per_read,out_paths,locks):
@@ -180,7 +178,7 @@ def count_reads(version,bamtx_filepath,out_dir):
     # print(profile)
     return df_count
     
-def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max,resume):
+def parallel_preprocess_gene(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -194,20 +192,21 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
         df_index = pd.read_csv(out_paths['index'],sep=',')
         gene_ids_done = list(df_index['gene_id'].unique())
     else:
-        with open(out_paths['json'],'w') as f:
-            f.write('{\n')
-            f.write('"genes":{')
+        # with open(out_paths['json'],'w') as f:
+        #     f.write('{\n')
+        #     f.write('"genes":{')
+        open(out_paths['json'],'w').close()
         with open(out_paths['index'],'w') as f:
-            f.write('gene_id,start,end\n') # header
+            f.write('idx,start,end\n') # header
         with open(out_paths['readcount'],'w') as f:
-            f.write('gene_id,n_reads\n') # header
+            f.write('idx,n_reads\n') # header
         open(out_paths['log'],'w').close()
 
     # Create communication queues.
     task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
 
     # Create and start consumers.
-    consumers = [helper.Consumer(task_queue=task_queue,task_function=preprocess,locks=locks) for i in range(n_processes)]
+    consumers = [helper.Consumer(task_queue=task_queue,task_function=preprocess_gene,locks=locks) for i in range(n_processes)]
     for p in consumers:
         p.start()
 
@@ -220,21 +219,23 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
         for gene_id in gene_ids:
             if resume and (gene_id in gene_ids_done):
                 continue
-            gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id) # no mapping for gene_id
-            if not os.path.exists(gt_mapping_filepath):
+                
+            # mapping a gene <-> transcripts
+            gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id) 
+            if not os.path.exists(gt_mapping_filepath): # no mapping
                 continue
             df_gt = pd.read_csv(gt_mapping_filepath)
 
             keys = zip(df_gt['tx_id'], df_gt['tx_pos'])
             values = zip(df_gt['chr'], df_gt['g_id'], df_gt['g_pos'], df_gt['kmer'])
-            t2g_mapping = dict(zip(keys,values))
-            
+            t2g_mapping = dict(zip(keys,values)) 
+            tx_ids = df_gt['tx_id'].unique() 
+            #
 
             df = df_count.loc[gene_id]
             n_reads = df['n_reads'].sum()
             read_ids = []
             if (n_reads >= read_count_min) and (n_reads <= read_count_max):
-                tx_ids = df_gt['tx_id'].unique() 
                 data_dict = dict()
                 for tx_id in tx_ids:
                     if tx_id not in f: # no eventalign for tx_id
@@ -254,17 +255,17 @@ def parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_m
     task_queue.join()
 
     # Write the ending of the json file.
-    with open(out_paths['json'],'a+') as f:
-        f.seek(0,2)  # end of file
-        f.truncate(f.tell()-1) 
-        f.write('\n}\n}\n')
+    # with open(out_paths['json'],'a+') as f:
+    #     f.seek(0,2)  # end of file
+    #     f.truncate(f.tell()-1) 
+    #     f.write('\n}\n}\n')
     ###
     
     with open(out_paths['log'],'a+') as f:
         f.write('Total %d genes.\n' %len(gene_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):  
+def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):  
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
@@ -330,20 +331,26 @@ def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):
         if (len(set(g_kmer_array)) == 1) and ('XXXXX' in set(g_kmer_array)) or (len(y_array) == 0):
             continue
                         
-        data[position][kmer] = {'norm_means': list(y_array),
-        'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
+        data[position][kmer] = {'norm_means': list(np.around(y_array,decimals=2))} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
         
     # write to file.
     log_str = '%s: Data preparation ... Done.' %(gene_id)
 
     with locks['json'], open(out_paths['json'],'a') as f:
-        f.write('\n')
+
+#         f.write('\n')
+#         pos_start = f.tell()
+#         f.write('"%s":' %gene_id)
+#         json.dump(data, f)
+#         pos_end = f.tell()
+#         f.write(',')
         pos_start = f.tell()
+        f.write('{')
         f.write('"%s":' %gene_id)
         json.dump(data, f)
+        f.write('}\n')
         pos_end = f.tell()
-        f.write(',')
-        
+
     with locks['index'], open(out_paths['index'],'a') as f:
         f.write('%s,%d,%d\n' %(gene_id,pos_start,pos_end))
         
@@ -354,14 +361,146 @@ def preprocess(gene_id,data_dict,t2g_mapping,out_paths,locks):
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(log_str + '\n')
 
-def main():
+def parallel_preprocess_tx(out_dir,n_processes,read_count_min,read_count_max,resume):
+    
+    # Create output paths and locks.
+    out_paths,locks = dict(),dict()
+    for out_filetype in ['json','index','log','readcount']:
+        out_paths[out_filetype] = os.path.join(out_dir,'data.%s' %out_filetype)
+        locks[out_filetype] = multiprocessing.Lock()
+                
+    # Writing the starting of the files.
+    tx_ids_done = []
+    if resume and os.path.exists(out_paths['index']):
+        df_index = pd.read_csv(out_paths['index'],sep=',')
+        tx_ids_done = list(df_index['transcript_id'].unique())
+    else:
+        open(out_paths['json'],'w').close()
+        with open(out_paths['index'],'w') as f:
+            f.write('idx,start,end\n') # header
+        with open(out_paths['readcount'],'w') as f:
+            f.write('idx,n_reads\n') # header
+        open(out_paths['log'],'w').close()
+
+    # Create communication queues.
+    task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
+
+    # Create and start consumers.
+    consumers = [helper.Consumer(task_queue=task_queue,task_function=preprocess_tx,locks=locks) for i in range(n_processes)]
+    for p in consumers:
+        p.start()
+
+    # Load tasks into task_queue.
+    tx_ids_processed = []
+    with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
+        for tx_id in f.keys():
+            if resume and (tx_id in tx_ids_done):
+                continue
+                
+            n_reads = len(f[tx_id])
+            read_ids = []
+            if (n_reads >= read_count_min) and (n_reads <= read_count_max):
+                data_dict = dict()
+                for read_id in f[tx_id].keys():
+                    data_dict[read_id] = f[tx_id][read_id]['events'][:]
+                    read_ids += [read_id]
+            task_queue.put((tx_id,data_dict,out_paths)) # Blocked if necessary until a free slot is available. 
+            tx_ids_processed += [tx_id]
+
+    # Put the stop task into task_queue.
+    task_queue = helper.end_queue(task_queue,n_processes)
+
+    # Wait for all of the tasks to finish.
+    task_queue.join()
+    
+    with open(out_paths['log'],'a+') as f:
+        f.write('Total %d transcripts.\n' %len(tx_ids_processed))
+        f.write(helper.decor_message('successfully finished'))
+
+def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo
+    """
+    Convert transcriptomic to genomic coordinates for a gene.
+    
+    Parameters
+    ----------
+        tx_id: str
+            Transcript ID.
+        data_dict: {read_id:events_array}
+            Events for each read.
+        features: [str] # todo
+            A list of features to collect from the reads that are aligned to each genomic coordinate in the output.
+    Returns
+    -------
+    dict
+        A dict of all specified features collected for each genomic coordinate.
+    """
+    
+    # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx'] # columns in the eventalign file per read.
+
+    events = []
+    condition_labels = []
+    run_labels = []
+    read_ids = []
+    transcriptomic_coordinates = []
+    
+    # Concatenate
+    if len(data_dict) == 0:
+        return
+
+    for read_id,events_per_read in data_dict.items(): 
+        # print(read_id)
+        events += [events_per_read]
+        
+    events = np.concatenate(events)
+   
+    # Sort and split 
+    idx_sorted = np.lexsort((events['reference_kmer'],events['transcriptomic_position'],events['transcript_id']))
+    key_tuples, index = np.unique(list(zip(events['transcript_id'][idx_sorted],events['transcriptomic_position'][idx_sorted],events['reference_kmer'][idx_sorted])),return_index = True,axis=0) #'chr',
+    y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
+    read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
+    reference_kmer_arrays = np.split(events['reference_kmer'][idx_sorted], index[1:])
+
+    # Prepare
+    # print('Reformating the data for each genomic position ...')
+    data = defaultdict(dict)
+    # for each position, make it ready for json dump
+    for key_tuple,y_array,read_id_array,reference_kmer_array in zip(key_tuples,y_arrays,read_id_arrays,reference_kmer_arrays):
+        idx,position,kmer = key_tuple
+        position = int(position.decode('UTF-8'))
+        kmer = kmer.decode('UTF-8')
+        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(y_array) == 0):
+            continue
+                        
+        data[position][kmer] = {'norm_means': list(np.around(y_array,decimals=2))} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
+        
+    # write to file.
+    log_str = '%s: Data preparation ... Done.' %(tx_id)
+    with locks['json'], open(out_paths['json'],'a') as f:
+        pos_start = f.tell()
+        f.write('{')
+        f.write('"%s":' %tx_id)
+        json.dump(data, f)
+        f.write('}\n')
+        pos_end = f.tell()
+        
+    with locks['index'], open(out_paths['index'],'a') as f:
+        f.write('%s,%d,%d\n' %(tx_id,pos_start,pos_end))
+        
+    with locks['readcount'], open(out_paths['readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
+        n_reads = len(data_dict)
+        f.write('%s,%d\n' %(tx_id,n_reads))
+        
+    with locks['log'], open(out_paths['log'],'a') as f:
+        f.write(log_str + '\n')
+        
+def main_g():
     args = get_args()
     #
     n_processes = args.n_processes        
     eventalign_filepath = args.eventalign
     summary_filepath = args.summary
-    bamtx_filepath = args.bamtx
     out_dir = args.out_dir
+    bamtx_filepath = args.bamtx
     ensembl_version = args.ensembl
     gt_mapping_dir = args.mapping
     read_count_min = args.read_count_min
@@ -384,7 +523,29 @@ def main():
         df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
 
     # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
-    parallel_preprocess(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max,resume)
+    parallel_preprocess_gene(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max,resume)
+
+def main():
+    args = get_args()
+    #
+    n_processes = args.n_processes        
+    eventalign_filepath = args.eventalign
+    summary_filepath = args.summary
+    out_dir = args.out_dir
+    read_count_min = args.read_count_min
+    read_count_max = args.read_count_max
+    resume = args.resume
+
+
+    misc.makedirs(out_dir) #todo: check every level.
+    
+    # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
+    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
+    if not helper.is_successful(eventalign_log_filepath):
+        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
+    
+    # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
+    parallel_preprocess_tx(out_dir,n_processes,read_count_min,read_count_max,resume)
 
 if __name__ == '__main__':
     """

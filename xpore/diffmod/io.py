@@ -53,12 +53,12 @@ def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=F
                 #
                 n_reads[condition_name] += [n_reads_per_run]
                 y += norm_means
-                read_ids += list(data_dict[run_name][idx][pos][kmer]['read_ids'][:])
+                # read_ids += list(data_dict[run_name][idx][pos][kmer]['read_ids'][:])
                 condition_labels += [condition_name]*n_reads_per_run
                 run_labels += [run_name]*n_reads_per_run
 
         y = np.array(y)
-        read_ids = np.array(read_ids)
+        # read_ids = np.array(read_ids)
         condition_labels = np.array(condition_labels)
         run_labels = np.array(run_labels)
         
@@ -85,7 +85,7 @@ def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=F
 
         key = (idx, pos, kmer)
 
-        data[key] = {'y': y, 'x': x, 'r': r, 'condition_names': condition_names_dummies, 'run_names': run_names_dummies, 'read_ids': read_ids, 'y_condition_names': condition_labels, 'y_run_names': run_labels}
+        data[key] = {'y': y, 'x': x, 'r': r, 'condition_names': condition_names_dummies, 'run_names': run_names_dummies, 'y_condition_names': condition_labels, 'y_run_names': run_labels} # , 'read_ids': read_ids
 
     return data
 
@@ -284,7 +284,7 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         sigma2_assigned = [sigma2[cluster_idx['unmod']],sigma2[cluster_idx['mod']]] 
         conf_mu = [conf_mu[cluster_idx['unmod']],conf_mu[cluster_idx['mod']]]
         w_mod = w[:,cluster_idx['mod']]
-        mod_assignment = [['lower','higher'][(mu[0]<mu[1])^cluster_idx['mod']]]
+        mod_assignment = [['higher','lower'][(mu[0]<mu[1])^cluster_idx['mod']]]
             
         
         ### calculate stats_pairwise

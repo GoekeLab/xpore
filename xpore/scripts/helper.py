@@ -17,7 +17,7 @@ def end_queue(task_queue,n_processes):
         task_queue.put(None)
     return task_queue
         
-def get_gene_ids(f_index,data_info): #todo
+def get_ids(f_index,data_info): #todo
     df_list = []
     cond2run_dict = defaultdict(list)
     for run_name, info in data_info.items():
@@ -25,13 +25,13 @@ def get_gene_ids(f_index,data_info): #todo
     unique_condition_names = {info['condition_name'] for _, info in data_info.items()}    
     for condition_name in unique_condition_names:
         run_names = cond2run_dict[condition_name]
-        list_of_set_gene_ids = []
+        list_of_set_ids = []
         for run_name in run_names:
-            list_of_set_gene_ids += [set(f_index[run_name].keys())]
-        # gene_ids = reduce(lambda x,y: x.intersection(y), list_of_set_gene_ids)
-        gene_ids = reduce(lambda x,y: x.union(y), list_of_set_gene_ids)
-        df_list += [pandas.DataFrame({'gene_ids':list(gene_ids),condition_name:[1]*len(gene_ids)})]
-    df_merged = reduce(lambda  left,right: pandas.merge(left,right,on=['gene_ids'], how='outer'), df_list).fillna(0).set_index('gene_ids')
+            list_of_set_ids += [set(f_index[run_name].keys())]
+        # ids = reduce(lambda x,y: x.intersection(y), list_of_set_ids)
+        ids = reduce(lambda x,y: x.union(y), list_of_set_ids)
+        df_list += [pandas.DataFrame({'ids':list(ids),condition_name:[1]*len(ids)})]
+    df_merged = reduce(lambda  left,right: pandas.merge(left,right,on=['ids'], how='outer'), df_list).fillna(0).set_index('ids')
     return sorted(list(df_merged[df_merged.sum(axis=1) >= 2].index)) # At least two conditions.
     
 ## tmp: to remove
