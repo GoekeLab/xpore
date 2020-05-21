@@ -331,7 +331,7 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
         if (len(set(g_kmer_array)) == 1) and ('XXXXX' in set(g_kmer_array)) or (len(y_array) == 0):
             continue
                         
-        data[position][kmer] = {'norm_means': list(np.around(y_array,decimals=2))} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
+        data[position] = {kmer: list(np.around(y_array,decimals=2))} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
         
     # write to file.
     log_str = '%s: Data preparation ... Done.' %(gene_id)
@@ -471,7 +471,7 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo
         if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(y_array) == 0):
             continue
                         
-        data[position][kmer] = {'norm_means': list(np.around(y_array,decimals=2))} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
+        data[position] = {kmer: list(np.around(y_array,decimals=2))} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
         
     # write to file.
     log_str = '%s: Data preparation ... Done.' %(tx_id)
@@ -493,7 +493,7 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(log_str + '\n')
         
-def main_g():
+def main():
     args = get_args()
     #
     n_processes = args.n_processes        
@@ -525,7 +525,7 @@ def main_g():
     # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
     parallel_preprocess_gene(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max,resume)
 
-def main():
+def main_tx():
     args = get_args()
     #
     n_processes = args.n_processes        

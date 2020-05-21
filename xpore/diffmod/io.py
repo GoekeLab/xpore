@@ -45,7 +45,7 @@ def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=F
         for run_name, info in data_info.items():
             condition_name = info['condition_name']
             if data_dict[run_name] is not None:
-                norm_means = data_dict[run_name][idx][pos][kmer]['norm_means']
+                norm_means = data_dict[run_name][idx][pos][kmer]#['norm_means']
                 n_reads_per_run = len(norm_means)
                 # In case of pooling==False, if not enough reads, don't include them. 
                 if (not pooling) and ((n_reads_per_run < min_count) or (n_reads_per_run > max_count)):
