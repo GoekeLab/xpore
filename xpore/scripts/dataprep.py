@@ -21,12 +21,12 @@ def get_args():
     parser.add_argument('--eventalign', dest='eventalign', help='Eventalign filepath from nanopolish.',required=True)
     parser.add_argument('--summary', dest='summary', help='Summary filepath from nanopolish.',required=True)
     parser.add_argument('--bamtx', dest='bamtx', help='bamtx filepath.',required=False)
-    parser.add_argument('--mapping', dest='mapping', help='gene-transcript mapping directory.',required=False)
     parser.add_argument('--out_dir', dest='out_dir', help='Output directory.',required=True)
 
 
     # Optional
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
+    parser.add_argument('--genome', dest='genome', help='.',default=False,action='store_true') 
     parser.add_argument('--n_processes', dest='n_processes', help='Number of processes.',type=int, default=1)
     parser.add_argument('--ensembl', dest='ensembl', help='ensembl version.',type=int, default=91)
     parser.add_argument('--read_count_min', dest='read_count_min', help='Minimum of read counts per gene.',type=int, default=10)
@@ -142,11 +142,10 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes):
     with open(out_paths['log'],'a+') as f:
         f.write(helper.decor_message('successfully finished'))
 
-def count_reads(version,bamtx_filepath,out_dir):
+def count_reads(ensembl,bamtx_filepath,out_dir):
     """
     Counts number of aligned reads from bamtx file. Returns a dataframe of ['chr','gene_id','gene_name','transcript_id','n_reads'].
     """
-    grch38 = EnsemblRelease(version) # human reference genome GRCh38 release 91 used in the ont mapping.    
     bam_file = pysam.AlignmentFile(bamtx_filepath, "rb")
 
     rows = []
@@ -159,7 +158,7 @@ def count_reads(version,bamtx_filepath,out_dir):
             continue
         tx_id = contig.split('.')[0]     
         try:
-            tx = grch38.transcript_by_id(tx_id)
+            tx = ensembl.transcript_by_id(tx_id)
         except ValueError as val_err:
             print(val_err)
             profile['contig_not_found'] += 1
@@ -167,7 +166,7 @@ def count_reads(version,bamtx_filepath,out_dir):
         else:
             g_id = tx.gene_id
             chromosome_id = tx.contig
-            g_name = grch38.gene_name_of_gene_id(g_id)
+            g_name = ensembl.gene_name_of_gene_id(g_id)
             rows += [[chromosome_id,g_id,g_name,tx_id,n_reads]]
 
     df_count = pd.DataFrame.from_records(rows,columns=['chr','gene_id','gene_name','transcript_id','n_reads'])
@@ -178,7 +177,26 @@ def count_reads(version,bamtx_filepath,out_dir):
     # print(profile)
     return df_count
     
-def parallel_preprocess_gene(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max,resume):
+def t2g(gene_id,ensembl):
+    tx_ids = []
+    t2g_dict = {}
+    for tx in ensembl.gene_by_id(gene_id).transcripts:
+        tx_seq = ensembl.transcript_sequence(tx.id)
+        if tx_seq is None:
+            continue
+        for interval in tx.exon_intervals:
+            for g_pos in range(interval[0],interval[1]+1): # Exclude the rims of exons.
+                tx_pos = tx.spliced_offset(g_pos)
+                if (interval[0] <= g_pos < interval[0]+2) or (interval[1]-2 < g_pos <= interval[1]): # Todo: To improve the mapping
+                    kmer = 'XXXXX'
+                else:
+                    kmer = tx_seq[tx_pos-2:tx_pos+3]
+                t2g_dict[(tx.id,tx_pos)] = (tx.contig,gene_id,g_pos,kmer) # tx.contig is chromosome.
+        tx_ids += [tx.id]
+                
+    return tx_ids, t2g_dict
+            
+def parallel_preprocess_gene(df_count,ensembl,out_dir,n_processes,read_count_min,read_count_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -221,17 +239,8 @@ def parallel_preprocess_gene(df_count,gt_mapping_dir,out_dir,n_processes,read_co
                 continue
                 
             # mapping a gene <-> transcripts
-            gt_mapping_filepath = os.path.join(gt_mapping_dir,'%s.csv' %gene_id) 
-            if not os.path.exists(gt_mapping_filepath): # no mapping
-                continue
-            df_gt = pd.read_csv(gt_mapping_filepath)
-
-            keys = zip(df_gt['tx_id'], df_gt['tx_pos'])
-            values = zip(df_gt['chr'], df_gt['g_id'], df_gt['g_pos'], df_gt['kmer'])
-            t2g_mapping = dict(zip(keys,values)) 
-            tx_ids = df_gt['tx_id'].unique() 
+            tx_ids, t2g_mapping = t2g(gene_id,ensembl)
             #
-
             df = df_count.loc[gene_id]
             n_reads = df['n_reads'].sum()
             read_ids = []
@@ -360,6 +369,7 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
         
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(log_str + '\n')
+
 
 def parallel_preprocess_tx(out_dir,n_processes,read_count_min,read_count_max,resume):
     
@@ -493,6 +503,7 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(log_str + '\n')
         
+
 def main():
     args = get_args()
     #
@@ -500,12 +511,14 @@ def main():
     eventalign_filepath = args.eventalign
     summary_filepath = args.summary
     out_dir = args.out_dir
-    bamtx_filepath = args.bamtx
     ensembl_version = args.ensembl
-    gt_mapping_dir = args.mapping
     read_count_min = args.read_count_min
     read_count_max = args.read_count_max
     resume = args.resume
+    genome = args.genome
+
+    if genome:
+        bamtx_filepath = args.bamtx
 
 
     misc.makedirs(out_dir) #todo: check every level.
@@ -515,37 +528,22 @@ def main():
     if not helper.is_successful(eventalign_log_filepath):
         parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
     
-    # (2) Generate read count from the bamtx file.
-    read_count_filepath = os.path.join(out_dir,'read_count.csv')
-    if os.path.exists(read_count_filepath):
-        df_count = pd.read_csv(read_count_filepath)
+    if genome:
+        # (2) Generate read count from the bamtx file.
+        ensembl = EnsemblRelease(ensembl_version) # human reference genome GRCh38 release 91 used in the ont mapping.    
+        read_count_filepath = os.path.join(out_dir,'read_count.csv')
+        if os.path.exists(read_count_filepath):
+            df_count = pd.read_csv(read_count_filepath)
+        else:
+            df_count = count_reads(ensembl,bamtx_filepath,out_dir)
+
+        # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
+        parallel_preprocess_gene(df_count,ensembl,out_dir,n_processes,read_count_min,read_count_max,resume)
+
     else:
-        df_count = count_reads(ensembl_version,bamtx_filepath,out_dir)
+        # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
+        parallel_preprocess_tx(out_dir,n_processes,read_count_min,read_count_max,resume)
 
-    # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
-    parallel_preprocess_gene(df_count,gt_mapping_dir,out_dir,n_processes,read_count_min,read_count_max,resume)
-
-def main_tx():
-    args = get_args()
-    #
-    n_processes = args.n_processes        
-    eventalign_filepath = args.eventalign
-    summary_filepath = args.summary
-    out_dir = args.out_dir
-    read_count_min = args.read_count_min
-    read_count_max = args.read_count_max
-    resume = args.resume
-
-
-    misc.makedirs(out_dir) #todo: check every level.
-    
-    # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
-    if not helper.is_successful(eventalign_log_filepath):
-        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
-    
-    # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
-    parallel_preprocess_tx(out_dir,n_processes,read_count_min,read_count_max,resume)
 
 if __name__ == '__main__':
     """
