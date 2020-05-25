@@ -5,21 +5,29 @@
 
 Welcome to xpore's documentation!
 =================================
+xPore is a Python package for detection of differentail RNA modifications from Nanopore sequencing data.
 
+To install the latest release, run::
+    pip install xpore
+
+See the :ref:`Installation page <installation>` for details.
+
+Contents
+------------------
 .. toctree::
-   :hidden:
+   :maxdepth: 2
    
    installation
-
-API
-===================
-.. automodule:: xpore.diffmod.gmm
-   :members:
+   api
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
 * :ref:`installation`
+
+References
+------------------
+
