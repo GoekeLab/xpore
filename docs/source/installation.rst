@@ -3,7 +3,7 @@
 Installation
 =======================
 
-xPore requires `Python3 <https://www.python.org>` to run.
+xPore requires `Python3 <https://www.python.org>`_ to run.
 
 To install our xpore package and its dependencies, run::
 
