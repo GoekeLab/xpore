@@ -1,4 +1,4 @@
-![alt text](https://github.com/GoekeLab/xpore/blob/master/figures/xpore_logo.png "xPore")
+<img src="https://github.com/GoekeLab/xpore/blob/master/figures/xpore_logo.png" alt="xPore" width="200"/>
 
 # xPore
 
