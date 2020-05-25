@@ -1,3 +1,5 @@
+![alt text](https://github.com/GoekeLab/xpore/blob/master/figures/xpore_logo.png "xPore")
+
 # xPore
 
 
