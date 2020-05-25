@@ -16,6 +16,7 @@ After extraction, you will find::
         |-- Homo_sapiens.GRCh38.cdna.mmi
 
 Each dataset under the ``data`` directory contains the following directories:
+
 * ``fast5`` : Raw signal FAST5 files.
 * ``fastq`` : Basecalled reads.
 * ``bamtx`` : Transcriptome-aligned sequence.
