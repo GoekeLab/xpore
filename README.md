@@ -21,23 +21,45 @@ $ wget http://s3.ap-southeast-1.amazonaws.com/all-public-data.store.genome.sg/xp
 
 After extraction, you will find 
 ```
-|-- model_kmer.csv
 |-- diffmod.ini 
-|--
 |-- data 
     |-- GohGIS_Hek293T_directRNA_Rep2 
     |-- GohGIS_Hek293T-METTL3-KO_directRNA_Rep2_Run1
+|-- db
+	|-- model_kmer.csv
+	|-- Homo_sapiens.GRCh38.cdna.ncrna_wtChrIS_modified-directRNA-32G_mapont.mmi
 ```
 
-Each dataset under the `tests/data` directory contains the following directories
+Each dataset under the `data` directory contains the following directories
 ```
-bamtx 
 fast5
 fastq
-nanopolish
 ```
 
-First, we need to preprocess the data for each data set using `xpore-dataprep`. Within each dataset directory, run
+First, align the sequence to transcriptome using `minimap2`. Within each dataset directory, run
+```sh
+$mkdir bamtx
+$minimap2 -ax map-ont -uf -t 8 --secondary=no \
+db/Homo_sapiens.GRCh38.cdna.ncrna_wtChrIS_modified-directRNA-32G_mapont.mmi \
+fastq/basecalled.fastq.gz > bamtx/aligned.sam 2>> bamtx/aligned.sam.log
+$samtools view -Sb bamtx/aligned.sam | samtools sort -o bamtx/aligned.bam - &>> bamtx/aligned.bam.log
+$samtools index bamtx/aligned.bam &>> bamtx/aligned.bam.index.log
+```
+
+Second, align the raw signal to the reference sequence using `nanopolish`. Within each dataset directory, run
+```sh
+$mkdir nanopolish
+$nanopolish index -d fast5 fastq/basecalled.fastq
+$nanopolish eventalign --reads fastq/basecalled.fastq \
+--bam bamtx/aligned.bam \
+--genome $proj_dir/db/Homo_sapiens.GRCh38.cdna.ncrna_wtChrIs_modified.fa \
+--scale-events \
+--signal-index \
+--summary nanopolish/summary.txt \
+--threads 4 > nanopolish/eventalign.txt
+```
+
+Finally, we need to preprocess the data for each data set using `xpore-dataprep`. Within each dataset directory, run
 ```sh
 $xpore-dataprep --eventalign nanopolish/eventalign.txt \
         --summary nanopolish/summary.txt \
