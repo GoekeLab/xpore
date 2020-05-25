@@ -20,8 +20,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'xpore'
-copyright = '2019, Naruemon Pratanwanich (Ploy)'
-author = 'Naruemon Pratanwanich (Ploy)'
+copyright = '2019, Ploy N. Pratanwanich'
+author = 'Ploy N. Pratanwanich'
 
 # The short X.Y version
 version = ''
