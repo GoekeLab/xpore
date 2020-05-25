@@ -13,7 +13,7 @@ Welcome to xpore's documentation!
 
 API
 ===================
-.. automodule:: xpore.diffmod.configurator
+.. automodule:: xpore.diffmod.gmm
    :members:
 
 Indices and tables
