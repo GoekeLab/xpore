@@ -1,4 +1,4 @@
-<div style="text-align: center"><img src="https://github.com/GoekeLab/xpore/blob/master/figures/xpore_logo.png" alt="xPore" width="600"/>
+<img src="https://github.com/GoekeLab/xpore/blob/master/figures/xpore_logo.png" alt="xPore" width="400"/>
 
 # xPore
 
