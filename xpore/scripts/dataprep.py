@@ -6,7 +6,6 @@ import multiprocessing
 import h5py
 import csv
 import json
-import pysam #0-based leftmost coordinate
 from pyensembl import EnsemblRelease
 from operator import itemgetter
 from collections import defaultdict
@@ -20,15 +19,14 @@ def get_args():
     # Required arguments
     parser.add_argument('--eventalign', dest='eventalign', help='Eventalign filepath from nanopolish.',required=True)
     parser.add_argument('--summary', dest='summary', help='Summary filepath from nanopolish.',required=True)
-    parser.add_argument('--bamtx', dest='bamtx', help='bamtx filepath.',required=False)
     parser.add_argument('--out_dir', dest='out_dir', help='Output directory.',required=True)
-
+    
+    parser.add_argument('--ensembl', dest='ensembl', help='ensembl version.',type=int, default=91)
 
     # Optional
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     parser.add_argument('--genome', dest='genome', help='.',default=False,action='store_true') 
     parser.add_argument('--n_processes', dest='n_processes', help='Number of processes.',type=int, default=1)
-    parser.add_argument('--ensembl', dest='ensembl', help='ensembl version.',type=int, default=91)
     parser.add_argument('--read_count_min', dest='read_count_min', help='Minimum of read counts per gene.',type=int, default=10)
     parser.add_argument('--read_count_max', dest='read_count_max', help='Maximum of read counts per gene.',type=int, default=5000)
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
@@ -142,40 +140,6 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes):
     with open(out_paths['log'],'a+') as f:
         f.write(helper.decor_message('successfully finished'))
 
-def count_reads(ensembl,bamtx_filepath,out_dir):
-    """
-    Counts number of aligned reads from bamtx file. Returns a dataframe of ['chr','gene_id','gene_name','transcript_id','n_reads'].
-    """
-    bam_file = pysam.AlignmentFile(bamtx_filepath, "rb")
-
-    rows = []
-    profile = defaultdict(int)
-    for contig in bam_file.references:
-        profile['n_contigs'] += 1
-        n_reads = bam_file.count(contig=contig,read_callback=lambda r: (not r.is_secondary) and (not r.is_qcfail) and ((r.flag==0) | (r.flag==16)) ) #flag: 0(+),16(-) 
-        if n_reads == 0:
-            profile['n_contigs_with_zero_reads'] += 1
-            continue
-        tx_id = contig.split('.')[0]     
-        try:
-            tx = ensembl.transcript_by_id(tx_id)
-        except ValueError as val_err:
-            print(val_err)
-            profile['contig_not_found'] += 1
-            continue
-        else:
-            g_id = tx.gene_id
-            chromosome_id = tx.contig
-            g_name = ensembl.gene_name_of_gene_id(g_id)
-            rows += [[chromosome_id,g_id,g_name,tx_id,n_reads]]
-
-    df_count = pd.DataFrame.from_records(rows,columns=['chr','gene_id','gene_name','transcript_id','n_reads'])
-    
-    # write to file.
-    read_count_filepath = os.path.join(out_dir,'read_count.csv')
-    df_count.to_csv(read_count_filepath,index=False,header=True,sep=',')
-    # print(profile)
-    return df_count
     
 def t2g(gene_id,ensembl):
     tx_ids = []
@@ -196,7 +160,7 @@ def t2g(gene_id,ensembl):
                 
     return tx_ids, t2g_dict
             
-def parallel_preprocess_gene(df_count,ensembl,out_dir,n_processes,read_count_min,read_count_max,resume):
+def parallel_preprocess_gene(ensembl,out_dir,n_processes,read_count_min,read_count_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -228,10 +192,15 @@ def parallel_preprocess_gene(df_count,ensembl,out_dir,n_processes,read_count_min
     for p in consumers:
         p.start()
 
+    # Get all gene ids.
+    gene_ids = set()
+    with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
+        for tx_id in f.keys():
+            g_id = ensembl.transcript_by_id(tx_id).gene_id
+            gene_ids = gene_ids.union([g_id])
+    #
+
     # Load tasks into task_queue.
-    df_count.set_index('gene_id',inplace=True)
-    # gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data: todo
-    gene_ids = df_count.index
     gene_ids_processed = []
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
         for gene_id in gene_ids:
@@ -241,14 +210,14 @@ def parallel_preprocess_gene(df_count,ensembl,out_dir,n_processes,read_count_min
             # mapping a gene <-> transcripts
             tx_ids, t2g_mapping = t2g(gene_id,ensembl)
             #
-            df = df_count.loc[gene_id]
-            n_reads = df['n_reads'].sum()
             read_ids = []
-            if (n_reads >= read_count_min) and (n_reads <= read_count_max):
-                data_dict = dict()
-                for tx_id in tx_ids:
-                    if tx_id not in f: # no eventalign for tx_id
-                        continue
+            data_dict = dict()
+            n_reads = 0
+            for tx_id in tx_ids:
+                if tx_id not in f: # no eventalign for tx_id
+                    continue
+                n_reads += len(f[tx_id])
+                if (n_reads >= read_count_min) and (n_reads <= read_count_max):
                     for read_id in f[tx_id].keys():
                         if read_id not in read_ids:
                             data_dict[read_id] = f[tx_id][read_id]['events'][:]
@@ -517,9 +486,6 @@ def main():
     resume = args.resume
     genome = args.genome
 
-    if genome:
-        bamtx_filepath = args.bamtx
-
 
     misc.makedirs(out_dir) #todo: check every level.
     
@@ -528,27 +494,23 @@ def main():
     if not helper.is_successful(eventalign_log_filepath):
         parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
     
+    # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
-        # (2) Generate read count from the bamtx file.
         ensembl = EnsemblRelease(ensembl_version) # human reference genome GRCh38 release 91 used in the ont mapping.    
-        read_count_filepath = os.path.join(out_dir,'read_count.csv')
-        if os.path.exists(read_count_filepath):
-            df_count = pd.read_csv(read_count_filepath)
-        else:
-            df_count = count_reads(ensembl,bamtx_filepath,out_dir)
-
-        # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
-        parallel_preprocess_gene(df_count,ensembl,out_dir,n_processes,read_count_min,read_count_max,resume)
+        parallel_preprocess_gene(ensembl,out_dir,n_processes,read_count_min,read_count_max,resume)
 
     else:
-        # (3) Create a .json file, where the info of all reads are stored per position, for modelling.
         parallel_preprocess_tx(out_dir,n_processes,read_count_min,read_count_max,resume)
 
 
 if __name__ == '__main__':
     """
     Usage:
-        xpore-dataprep --eventalign --summary --bamtx --mapping --out_dir --n_processes
+        --eventalign EVENTALIGN --summary SUMMARY --out_dir OUT_DIR \
+                      [--ensembl ENSEMBL] [--genome] \
+                      [--n_processes N_PROCESSES] \
+                      [--read_count_min READ_COUNT_MIN] \
+                      [--read_count_max READ_COUNT_MAX] [--resume] \
     """
     main()
 

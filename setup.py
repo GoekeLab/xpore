@@ -24,7 +24,6 @@ setup(
             'scipy>=1.4.1',
             'PyYAML>=5.3.1',
             'h5py>=2.10.0',
-            'pysam>=0.15.4',
             'pyensembl>=1.8.5'
             ],
     python_requires=">=3.5",

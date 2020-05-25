@@ -223,6 +223,8 @@ def main():
 if __name__ == '__main__':
     """
     Usage:
-        xpore-diffmod --config --n_processes --save_table
+        xpore-diffmod --config CONFIG [--n_processes N_PROCESSES] \
+                     [--save_table] [--save_models] [--resume] \
+                     [--ids [IDS [IDS ...]]]
     """
     main()
