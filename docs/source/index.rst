@@ -11,7 +11,10 @@ Welcome to xpore's documentation!
    
    installation
 
-
+API
+===================
+.. automodule:: xpore.diffmod.configurator
+   :members:
 
 Indices and tables
 ==================
