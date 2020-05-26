@@ -34,7 +34,7 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
     """
     Run the model on each posiiton across the given idx.
     """
-    data = io.load_data(idx,data_dict,data_info,min_count=criteria['readcount_min'],max_count=criteria['readcount_max'],pooling=method['pooling']) 
+    data = io.load_data(idx,data_dict,min_count=criteria['readcount_min'],max_count=criteria['readcount_max'],pooling=method['pooling']) 
     models = dict()
     for key,data_at_pos in data.items(): # For each position
         idx, pos, kmer = key
@@ -144,17 +144,18 @@ def main():
         p.start()
 
     ### Load tasks in to task_queue. ###
-    f_index,f_data,df_readcount = {},{},{}
-    for run_name, info in data_info.items():
-        # Read index files
-        df_index = pandas.read_csv(os.path.join(info['dirpath'],'data.index'),sep=',') 
-        f_index[run_name] = dict(zip(df_index['idx'],zip(df_index['start'],df_index['end'])))
-        
-        # Read readcount files
-        # df_readcount[run_name] = pandas.read_csv(os.path.join(info['dirpath'],'readcount.csv')).groupby('gene_id')['n_reads'].sum() # todo: data.readcount
-        
-        # Open data files
-        f_data[run_name] = open(os.path.join(info['dirpath'],'data.json'),'r') 
+    f_index,f_data = {},{}
+    for condition_name, run_names in data_info.items():
+        for run_name, dirpath in run_names.items():
+            # Read index files
+            df_index = pandas.read_csv(os.path.join(dirpath,'data.index'),sep=',') 
+            f_index[run_name] = dict(zip(df_index['idx'],zip(df_index['start'],df_index['end'])))
+
+            # Read readcount files
+            # df_readcount[run_name] = pandas.read_csv(os.path.join(info['dirpath'],'readcount.csv')).groupby('gene_id')['n_reads'].sum() # todo: data.readcount
+
+            # Open data files
+            f_data[run_name] = open(os.path.join(dirpath,'data.json'),'r') 
     
     # Load tasks into task_queue.
     # gene_ids = helper.get_gene_ids(config.filepath)
@@ -185,18 +186,19 @@ def main():
         ###
         
         data_dict = dict()
-        for run_name in data_info.keys():
-            try:
-                pos_start,pos_end = f_index[run_name][idx]
-            except KeyError:
-                data_dict[run_name] = None
-            else:
-                # print(idx,run_name,pos_start,pos_end,df_readcount[run_name].loc[idx])
-                f_data[run_name].seek(pos_start,0)
-                json_str = f_data[run_name].read(pos_end-pos_start)
-                # print(json_str[:50])
-                # json_str = '{%s}' %json_str # used for old dataprep
-                data_dict[run_name] = json.loads(json_str) # A data dict for each gene.
+        for condition_name, run_names in data_info.items():
+            for run_name, dirpath in run_names.items():
+                try:
+                    pos_start,pos_end = f_index[run_name][idx]
+                except KeyError:
+                    data_dict[(condition_name,run_name)] = None
+                else:
+                    # print(idx,run_name,pos_start,pos_end,df_readcount[run_name].loc[idx])
+                    f_data[run_name].seek(pos_start,0)
+                    json_str = f_data[run_name].read(pos_end-pos_start)
+                    # print(json_str[:50])
+                    # json_str = '{%s}' %json_str # used for old dataprep
+                    data_dict[(condition_name,run_name)] = json.loads(json_str) # A data dict for each gene.
                 
         # tmp
         out_paths['model_filepath'] = os.path.join(paths['models'],'%s.hdf5' %idx)
@@ -212,8 +214,8 @@ def main():
     task_queue.join()
 
     # Close data files
-    for run_name in data_info.keys():
-        f_data[run_name].close()   
+    for f in f_data.values():
+        f.close()   
         
     if save_table:
         with open(out_paths['log'],'a+') as f:

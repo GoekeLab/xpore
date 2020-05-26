@@ -7,15 +7,15 @@ xpore requires [Python3](https://www.python.org) to run.
 To install our xpore package and its dependencies, run
 
 ```sh
-$ python setup.py install
+$ pip install xpore
 $ pyensembl install --release 91 --species homo_sapiens
 ```
 
 ### Detection of differential modification
-Download the demo dataset from our S3 bucket.
+Download the demo dataset from our [S3 bucket](http://s3.ap-southeast-1.amazonaws.com/all-public-data.store.genome.sg/xpore/demo.tar.gz).
 
 ```sh
-$ wget http://s3.ap-southeast-1.amazonaws.com/all-public-data.store.genome.sg/xpore/diffmod_test_data.tar.gz
+$ wget http://s3.ap-southeast-1.amazonaws.com/all-public-data.store.genome.sg/xpore/demo.tar.gz
 ```
 
 After extraction, you will find 

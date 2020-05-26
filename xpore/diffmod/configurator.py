@@ -4,6 +4,9 @@ from collections import defaultdict
 
 from ..utils import misc
 
+def get_condition_run_name(condition_name,run_name):
+    return '-'.join([condition_name,run_name])
+
 class Configurator(object):
     def __init__(self, config_filepath):
         self.filepath = os.path.abspath(config_filepath)
@@ -21,7 +24,11 @@ class Configurator(object):
         return paths
         
     def get_data_info(self):
-        return self.yaml['data']
+        data = defaultdict(dict)
+        for condition_name, run_names in self.yaml['data'].items():
+            for run_name, dirpath in run_names.items():
+                data[condition_name] = {get_condition_run_name(condition_name,run_name):dirpath}
+        return data
     
     def get_criteria(self):
         return self.yaml['criteria']

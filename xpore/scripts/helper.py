@@ -19,12 +19,8 @@ def end_queue(task_queue,n_processes):
         
 def get_ids(f_index,data_info): #todo
     df_list = []
-    cond2run_dict = defaultdict(list)
-    for run_name, info in data_info.items():
-        cond2run_dict[info['condition_name']] += [run_name]        
-    unique_condition_names = {info['condition_name'] for _, info in data_info.items()}    
-    for condition_name in unique_condition_names:
-        run_names = cond2run_dict[condition_name]
+      
+    for condition_name, run_names in data_info.items():
         list_of_set_ids = []
         for run_name in run_names:
             list_of_set_ids += [set(f_index[run_name].keys())]

@@ -18,7 +18,7 @@ def get_dummies(x):
     return np.array(X).T, labels
 
 
-def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=False): 
+def load_data(idx, data_dict, min_count=30, max_count=3000, pooling=False): 
     """
     Parameters
     ----------
@@ -28,11 +28,11 @@ def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=F
     
     # Create all (pos,kmer) pairs from all runs.
     position_kmer_pairs = []
-    for run_name in data_info.keys(): # data_dict[run_name][idx][position][kmer]
+    for (condition_name,run_name), d_dict in data_dict.items(): # data_dict[run_name][idx][position][kmer]
         pairs = []
-        if data_dict[run_name] is not None:
-            for pos in data_dict[run_name][idx].keys():
-                for kmer in data_dict[run_name][idx][pos].keys():
+        if d_dict is not None:
+            for pos in d_dict[idx].keys():
+                for kmer in d_dict[idx][pos].keys():
                     pairs += [(pos,kmer)]                
             position_kmer_pairs += [pairs]
 
@@ -42,10 +42,10 @@ def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=F
     for pos,kmer in position_kmer_pairs:  
         y, read_ids, condition_labels, run_labels = [], [], [], []
         n_reads = defaultdict(list)
-        for run_name, info in data_info.items():
-            condition_name = info['condition_name']
-            if data_dict[run_name] is not None:
-                norm_means = data_dict[run_name][idx][pos][kmer]#['norm_means']
+        
+        for (condition_name,run_name), d_dict in data_dict.items():
+            if d_dict is not None:
+                norm_means = d_dict[idx][pos][kmer]#['norm_means']
                 n_reads_per_run = len(norm_means)
                 # In case of pooling==False, if not enough reads, don't include them. 
                 if (not pooling) and ((n_reads_per_run < min_count) or (n_reads_per_run > max_count)):
@@ -66,7 +66,7 @@ def load_data(idx, data_dict, data_info, min_count=30, max_count=3000, pooling=F
         if len(y) == 0:  # no reads at all.
             continue
         conditions_incl = []
-        unique_condition_names = {info['condition_name'] for _, info in data_info.items()}
+        unique_condition_names = {condition_name for condition_name,_ in data_dict.keys()}
         if pooling: # At the modelling step all the reads from the same condition will be combined.
             for condition_name in unique_condition_names:
                 if (sum(n_reads[condition_name]) >= min_count) and (sum(n_reads[condition_name]) <= max_count):
@@ -179,10 +179,11 @@ def load_models(model_filepath):  # per gene/transcript #Todo: refine.
     return models,data  # {(idx,position,kmer): GMM obj}
 
 def get_ordered_condition_run_names(data_info):
-    unique_condition_names = {info['condition_name'] for _, info in data_info.items()}
-    unique_condition_names_sorted = sorted(list(unique_condition_names))
-    unique_run_names_sorted = sorted(list(set(list(data_info.keys()))))
-    return unique_condition_names_sorted,unique_run_names_sorted
+    unique_condition_names = list(data_info.keys())
+    unique_condition_names_sorted = sorted(unique_condition_names)
+    unique_run_names_sorted = sum([list(run_names.keys()) for _, run_names in data_info.items()],[])
+
+    return unique_condition_names_sorted, unique_run_names_sorted
 
 def get_result_table_header(data_info,method):
     condition_names,run_names = get_ordered_condition_run_names(data_info)
@@ -244,9 +245,6 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
 
     ###
     condition_names,run_names = get_ordered_condition_run_names(data_info) # information from the config file used for modelling.
-    cond2run_dict = defaultdict(list)
-    for run_name, info in data_info.items():
-        cond2run_dict[info['condition_name']] += [run_name]        
     ###
 
     ###
@@ -293,7 +291,7 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
             if model.method['pooling']:
                 cond1, cond2 = [cond1], [cond2]
             else:
-                cond1, cond2 = cond2run_dict[cond1], cond2run_dict[cond2]
+                cond1, cond2 = list(data_info[cond1].keys()), list(data_info[cond2].keys())
             if any(r in model_group_names for r in cond1) and any(r in model_group_names for r in cond2):
                 w_cond1 = w[np.isin(model_group_names, cond1), cluster_idx['mod']].flatten()
                 w_cond2 = w[np.isin(model_group_names, cond2), cluster_idx['mod']].flatten()
@@ -314,7 +312,7 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
                 if model.method['pooling']:
                     cond = [cond]
                 else:
-                    cond = cond2run_dict[cond]
+                    cond = list(data_info[cond].keys())
                 if any(r in model_group_names for r in cond):
                     w_cond1 = w[np.isin(model_group_names, cond), cluster_idx['mod']].flatten()
                     w_cond2 = w[~np.isin(model_group_names, cond), cluster_idx['mod']].flatten()
