@@ -8,13 +8,15 @@ The format of configuration file which is one of the inputs for ``xpore-diffmod`
 ::
     
     data:
-        <DATASET_NAME_1>:
-            condition_name: <CONDITION_NAME>
-            dirpath: <DIR_PATH_TO_DATA_JSON>
+        <CONDITION_NAME_1>:
+            <REP1>: <DIR_PATH_TO_DATA_JSON>
+            ...
 
-        <DATASET_NMAE_2>:
-            condition_name: <CONDITION_NAME>
-            dirpath: <DIR_PATH_TO_DATA_JSON>
+        <CONDITION_NMAE_2>:
+            <REP1>: <DIR_PATH_TO_DATA_JSON>
+            ...
+
+        ...
 
     paths:
         model_kmer: <PATH_TO_MODEL_KMER>
@@ -23,7 +25,8 @@ The format of configuration file which is one of the inputs for ``xpore-diffmod`
     criteria:
         readcount_min: <MINIMUM_READCOUNT>
         readcount_max: <MAXIMUM_READCOUNT>
-
+    
+    (OPTIONAL)
     method:
         prefiltering:
             method: t-test
