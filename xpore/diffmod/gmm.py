@@ -75,7 +75,9 @@ class GMM(object):
             self.info = inits
 
     def __compute_log_elbo(self):
-
+        """
+        Compute log ELBO.
+        """
         log_elbo = self.nodes['y']._log_likelihood()
         log_elbo += self.nodes['z']._log_prob_prior()
         log_elbo -= self.nodes['z']._log_prob_posterior()
@@ -89,7 +91,9 @@ class GMM(object):
         return log_elbo
 
     def fit(self):
-
+        """
+        Fit.
+        """
         error = False
         converged = False
         # self.__init_params()
@@ -128,6 +132,9 @@ class GMM(object):
 
 
 class Constant(object):
+    """
+    Constant node.
+    """
     def __init__(self, data=None, inits=None):
         self.params = inits
         self.data = data
