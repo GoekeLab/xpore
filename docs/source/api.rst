@@ -1,5 +1,10 @@
+.. _api:
+
 API
 ===
 
-.. automodule:: xpore.diffmod.gmm
+.. autoclass:: xpore.diffmod.gmm.GMM
+   :members:
+
+.. autoclass:: xpore.diffmod.gmm.Constant
    :members:

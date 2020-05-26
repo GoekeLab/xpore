@@ -34,7 +34,7 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
     """
     Run the model on each posiiton across the given idx.
     """
-    data = io.load_data(idx,data_dict,data_info,min_count=criteria['read_count_min'],max_count=criteria['read_count_max'],pooling=method['pooling']) 
+    data = io.load_data(idx,data_dict,data_info,min_count=criteria['readcount_min'],max_count=criteria['readcount_max'],pooling=method['pooling']) 
     models = dict()
     for key,data_at_pos in data.items(): # For each position
         idx, pos, kmer = key
@@ -151,7 +151,7 @@ def main():
         f_index[run_name] = dict(zip(df_index['idx'],zip(df_index['start'],df_index['end'])))
         
         # Read readcount files
-        # df_readcount[run_name] = pandas.read_csv(os.path.join(info['dirpath'],'read_count.csv')).groupby('gene_id')['n_reads'].sum() # todo: data.readcount
+        # df_readcount[run_name] = pandas.read_csv(os.path.join(info['dirpath'],'readcount.csv')).groupby('gene_id')['n_reads'].sum() # todo: data.readcount
         
         # Open data files
         f_data[run_name] = open(os.path.join(info['dirpath'],'data.json'),'r') 

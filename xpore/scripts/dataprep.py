@@ -27,8 +27,8 @@ def get_args():
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     parser.add_argument('--genome', dest='genome', help='.',default=False,action='store_true') 
     parser.add_argument('--n_processes', dest='n_processes', help='Number of processes.',type=int, default=1)
-    parser.add_argument('--read_count_min', dest='read_count_min', help='Minimum of read counts per gene.',type=int, default=10)
-    parser.add_argument('--read_count_max', dest='read_count_max', help='Maximum of read counts per gene.',type=int, default=5000)
+    parser.add_argument('--readcount_min', dest='readcount_min', help='Minimum of read counts per gene.',type=int, default=10)
+    parser.add_argument('--readcount_max', dest='readcount_max', help='Maximum of read counts per gene.',type=int, default=5000)
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
 
     return parser.parse_args()
@@ -160,7 +160,7 @@ def t2g(gene_id,ensembl):
                 
     return tx_ids, t2g_dict
             
-def parallel_preprocess_gene(ensembl,out_dir,n_processes,read_count_min,read_count_max,resume):
+def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -217,12 +217,12 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,read_count_min,read_cou
                 if tx_id not in f: # no eventalign for tx_id
                     continue
                 n_reads += len(f[tx_id])
-                if (n_reads >= read_count_min) and (n_reads <= read_count_max):
+                if (n_reads >= readcount_min) and (n_reads <= readcount_max):
                     for read_id in f[tx_id].keys():
                         if read_id not in read_ids:
                             data_dict[read_id] = f[tx_id][read_id]['events'][:]
                             read_ids += [read_id]
-            if (len(read_ids) >= read_count_min) and (len(read_ids) <= read_count_max):
+            if (len(read_ids) >= readcount_min) and (len(read_ids) <= readcount_max):
                 task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
                 gene_ids_processed += [gene_id]
 
@@ -340,7 +340,7 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
         f.write(log_str + '\n')
 
 
-def parallel_preprocess_tx(out_dir,n_processes,read_count_min,read_count_max,resume):
+def parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -378,7 +378,7 @@ def parallel_preprocess_tx(out_dir,n_processes,read_count_min,read_count_max,res
                 
             n_reads = len(f[tx_id])
             read_ids = []
-            if (n_reads >= read_count_min) and (n_reads <= read_count_max):
+            if (n_reads >= readcount_min) and (n_reads <= readcount_max):
                 data_dict = dict()
                 for read_id in f[tx_id].keys():
                     data_dict[read_id] = f[tx_id][read_id]['events'][:]
@@ -481,8 +481,8 @@ def main():
     summary_filepath = args.summary
     out_dir = args.out_dir
     ensembl_version = args.ensembl
-    read_count_min = args.read_count_min
-    read_count_max = args.read_count_max
+    readcount_min = args.readcount_min
+    readcount_max = args.readcount_max
     resume = args.resume
     genome = args.genome
 
@@ -497,10 +497,10 @@ def main():
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
         ensembl = EnsemblRelease(ensembl_version) # human reference genome GRCh38 release 91 used in the ont mapping.    
-        parallel_preprocess_gene(ensembl,out_dir,n_processes,read_count_min,read_count_max,resume)
+        parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount_max,resume)
 
     else:
-        parallel_preprocess_tx(out_dir,n_processes,read_count_min,read_count_max,resume)
+        parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resume)
 
 
 if __name__ == '__main__':
@@ -509,8 +509,8 @@ if __name__ == '__main__':
         --eventalign EVENTALIGN --summary SUMMARY --out_dir OUT_DIR \
                       [--ensembl ENSEMBL] [--genome] \
                       [--n_processes N_PROCESSES] \
-                      [--read_count_min READ_COUNT_MIN] \
-                      [--read_count_max READ_COUNT_MAX] [--resume] \
+                      [--readcount_min READCOUNT_MIN] \
+                      [--readcount_max READCOUNT_MAX] [--resume] \
     """
     main()
 
