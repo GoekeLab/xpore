@@ -22,8 +22,8 @@ After extraction, you will find
 ```
 |-- diffmod.ini 
 |-- data 
-    |-- GohGIS_Hek293T_directRNA_Rep2 
-    |-- GohGIS_Hek293T-METTL3-KO_directRNA_Rep2_Run1
+    |-- HEK293T-METTL3-KO-rep1 
+    |-- HEK293T-WT-rep1
 |-- db
 	|-- model_kmer.csv
 	|-- Homo_sapiens.GRCh38.cdna.mmi
@@ -37,9 +37,9 @@ bamtx
 nanopolish
 ```
 
-(To run the demo, you can skip the first two steps, because `bamtx` and `nanopolish` are already there.)
+(For demo, you can skip the first two steps, because `bamtx` and `nanopolish` are already there.)
 
-1. First, align the sequence to transcriptome using `minimap2`. Within each dataset directory, run
+1. Align the sequence to transcriptome using `minimap2`. Within each dataset directory, run
 ```sh
 $mkdir bamtx
 $minimap2 -ax map-ont -uf -t 8 --secondary=no \
@@ -49,7 +49,7 @@ $samtools view -Sb bamtx/aligned.sam | samtools sort -o bamtx/aligned.bam - &>> 
 $samtools index bamtx/aligned.bam &>> bamtx/aligned.bam.index.log
 ```
 
-2. Second, align the raw signal to the reference sequence using `nanopolish`. Within each dataset directory, run
+2. Align the raw signal to the reference sequence using `nanopolish`. Within each dataset directory, run
 ```sh
 $mkdir nanopolish
 $nanopolish index -d fast5 fastq/basecalled.fastq
@@ -62,7 +62,7 @@ $nanopolish eventalign --reads fastq/basecalled.fastq \
 --threads 4 > nanopolish/eventalign.txt
 ```
 
-3. Third, we need to preprocess the data for each data set using `xpore-dataprep`. Within each dataset directory, run
+3. Preprocess the data for each data set using `xpore-dataprep`. Within each dataset directory, run
 ```sh
 $xpore-dataprep --eventalign nanopolish/eventalign.txt \
         --summary nanopolish/summary.txt \
@@ -75,7 +75,7 @@ $xpore-dataprep --eventalign nanopolish/eventalign.txt \
 
 Output files: `eventalign.hdf5`, `eventalign.log`, `data.json`, `data.index` , `data.readcount`, `data.log`
 
-4. Finally, now that the data are ready for estimating differential modification using `xpore-diffmod`. To call the differential modification between Hek293T_directRNA and Hek293T-METTL3-KO_directRNA, we can use the example confgiuration file `diffmod.yaml` by running
+4. Now that we have the  data ready for estimating differential modification using `xpore-diffmod`. To call the differential modification between HEK293T-METTL3-KO and HEK293T-WT, we can use the example confgiuration file `diffmod.yaml` by running
 
 ```sh
 $ xpore-diffmod --config_filepath ./tests/config/diffmod.yaml --n_processes 2 --save_table

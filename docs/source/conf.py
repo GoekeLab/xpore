@@ -28,7 +28,7 @@ author = 'Ploy N. Pratanwanich'
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '0.2.0'
+release = '0.2.1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -43,7 +43,7 @@ release = '0.2.0'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.githubpages',
-    'rinoh.frontend.sphinx'
+    #'rinoh.frontend.sphinx'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
