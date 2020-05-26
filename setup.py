@@ -14,7 +14,7 @@ setup(
     name=__pkg_name__,
     license="MIT",
     description='xpore is a python package for Nanopore data analysis.',
-    version='v0.1.2',
+    version='v0.2.0',
     long_description=README,
     url='https://github.com/GoekeLab/xpore',
     packages=find_packages(),
