@@ -26,7 +26,7 @@ def get_args():
     # Optional
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     parser.add_argument('--genome', dest='genome', help='.',default=False,action='store_true') 
-    parser.add_argument('--n_processes', dest='n_processes', help='Number of processes.',type=int, default=1)
+    parser.add_argument('--n_processes', dest='n_processes', help='Number of processes to run.',type=int, default=1)
     parser.add_argument('--readcount_min', dest='readcount_min', help='Minimum of read counts per gene.',type=int, default=10)
     parser.add_argument('--readcount_max', dest='readcount_max', help='Maximum of read counts per gene.',type=int, default=5000)
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo

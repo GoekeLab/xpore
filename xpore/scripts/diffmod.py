@@ -20,8 +20,8 @@ def get_args():
     parser.add_argument('--config', dest='config', help='YAML configuraion filepath.',required=True)
 
     # Optional arguments
-    parser.add_argument('--n_processes', dest='n_processes', help='Number of processes.',type=int,default=1)
-    parser.add_argument('--save_table', dest='save_table', help='Save the result table.',default=False,action='store_true') 
+    parser.add_argument('--n_processes', dest='n_processes', help='Number of processes to run.',type=int,default=1)
+    parser.add_argument('--save_table', dest='save_table', help='Save the result table.',default=True,action='store_true') 
     parser.add_argument('--save_models', dest='save_models', help='Save the models.',default=False,action='store_true') # todo
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
     

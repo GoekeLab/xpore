@@ -12,7 +12,7 @@ The format of configuration file which is one of the inputs for ``xpore-diffmod`
             <REP1>: <DIR_PATH_TO_DATA_JSON>
             ...
 
-        <CONDITION_NMAE_2>:
+        <CONDITION_NAME_2>:
             <REP1>: <DIR_PATH_TO_DATA_JSON>
             ...
 
