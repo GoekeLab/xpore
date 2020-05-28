@@ -30,11 +30,11 @@ After extraction, you will find
 ```
 
 Each dataset under the `data` directory contains the following directories
-```
-fast5 
-fastq
-bamtx
-nanopolish
+
+* `fast5`: Raw signal FAST5 files.
+* `fastq`: Basecalled reads.
+* `bamtx`: Transcriptome-aligned sequence.
+* `nanopolish`: Eventalign files obtained from [nanopolish](https://nanopolish.readthedocs.io).
 ```
 
 (For demo, you can skip the first two steps, because `bamtx` and `nanopolish` are already there.)
@@ -73,7 +73,14 @@ $xpore-dataprep --eventalign nanopolish/eventalign.txt \
         --n_processes 2
 ```
 
-Output files: `eventalign.hdf5`, `eventalign.log`, `data.json`, `data.index` , `data.readcount`, `data.log`
+Output files: 
+
+* `eventalign.hdf5`: Merged segments from ``nanopolish eventalign``, stored with hierarchical keys <TRANSCRIPT_ID>/<READ_ID>/events.
+* `eventalign.log`: Log file
+* `data.json`: Data used in xpore-diffmod
+* `data.index`: File index of data.json for random access per gene
+* `data.readcount`: Summary of readcounts per gene
+* `data.log`: Log file
 
 4. Now that we have the  data ready for estimating differential modification using `xpore-diffmod`. To call the differential modification between HEK293T-METTL3-KO and HEK293T-WT, we can use the example confgiuration file `diffmod.yaml` by running
 
