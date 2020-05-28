@@ -20,6 +20,7 @@ $ wget http://s3.ap-southeast-1.amazonaws.com/all-public-data.store.genome.sg/xp
 
 After extraction, you will find 
 ```
+demo
 |-- diffmod.ini 
 |-- data 
     |-- HEK293T-METTL3-KO-rep1 # dataset dir 

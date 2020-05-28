@@ -9,6 +9,7 @@ Download the demo dataset from our `S3 bucket <http://s3.ap-southeast-1.amazonaw
 
 After extraction, you will find::
     
+    demo
     |-- diffmod.yaml
     |-- data
         |-- HEK293T-METTL3-KO-rep1 # dataset dir
