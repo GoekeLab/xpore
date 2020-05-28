@@ -16,13 +16,12 @@ class Configurator(object):
     def get_paths(self):
         paths = {}
         
-        if 'model_kmer' in self.yaml['paths']:
-            paths['model_kmer'] = os.path.abspath(self.yaml['paths']['model_kmer'])
+        if 'prior' in self.yaml:
+            paths['model_kmer'] = os.path.abspath(self.yaml['prior'])
         else:
             paths['model_kmer'] = os.path.join(os.path.dirname(__file__),'model_kmer.csv')
-            print(paths['model_kmer'])
 
-        paths['out_dir'] = os.path.join(os.path.abspath(self.yaml['paths']['out_dir']), self.filename)
+        paths['out_dir'] = os.path.join(os.path.abspath(self.yaml['out']))
         paths.update(misc.makedirs(paths['out_dir'],sub_dirs=['models']))
         paths['model_filepath'] = os.path.join(paths['out_dir'], 'models', '%s.model')        
         return paths

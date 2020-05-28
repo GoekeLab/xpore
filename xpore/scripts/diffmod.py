@@ -110,6 +110,7 @@ def main():
     criteria = config.get_criteria()
     prior_params = config.get_priors()
 
+    print('Using the signal of unmodified RNA from',paths['model_kmer'])
     model_kmer = pandas.read_csv(paths['model_kmer']).set_index('model_kmer')
     ###
 

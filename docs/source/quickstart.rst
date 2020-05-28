@@ -15,9 +15,6 @@ After extraction, you will find::
     |-- data
         |-- HEK293T-METTL3-KO-rep1 # dataset dir
         |-- HEK293T-WT-rep1 # dataset dir
-    |-- db
-        |-- model_kmer.csv
-        |-- Homo_sapiens.GRCh38.cdna.mmi
 
 Each dataset under the ``data`` directory contains the following directories:
 
@@ -58,9 +55,7 @@ Below is how it looks like::
         WT:
             rep1: ./data/HEK293T-WT-rep1/dataprep
 
-    paths:
-        model_kmer: ./db/model_kmer.csv
-        out_dir: ./out
+    out: ./out
 
     method:
         prefiltering:
