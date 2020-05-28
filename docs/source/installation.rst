@@ -19,5 +19,5 @@ Installation from our GitHub repository
     git clone https://github.com/GoekeLab/xpore.git
     cd xpore
     python setup.py install
-
+    pyensembl install --release 91 --species homo_sapiens
 
