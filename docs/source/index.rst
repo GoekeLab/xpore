@@ -14,6 +14,8 @@ To install the latest release, run::
 
 See the :ref:`Installation page <installation>` for details.
 
+To start, please follow the instructions in :ref:`Quickstart page <quickstart>`. 
+
 Contents
 ------------------
 .. toctree::

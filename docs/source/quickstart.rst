@@ -24,7 +24,7 @@ Each dataset under the ``data`` directory contains the following directories:
 * ``bamtx`` : Transcriptome-aligned sequence.
 * ``nanopolish``: Eventalign files obtained from `nanopolish <https://nanopolish.readthedocs.io/en/latest>`_.
 
-(For demo, you can skip the first two steps, because bamtx and nanopolish are already there.)
+(For demo, you can skip the first two steps, because ``bamtx`` and ``nanopolish`` are already there.)
 
 1. Align the sequence to transcriptome using `minimap2 <https://github.com/lh3/minimap2>`_. 
 Within each dataset directory, run::
