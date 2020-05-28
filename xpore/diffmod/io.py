@@ -191,14 +191,14 @@ def get_result_table_header(data_info,method):
     stats_pairwise = []
     for cond1, cond2 in itertools.combinations(condition_names, 2):
         pair = '_vs_'.join((cond1, cond2)) # cond1 - cond2
-        stats_pairwise += ['p_w_mod_%s' % pair, 'w_mod_mean_diff_%s' % pair, 'z_score_%s' % pair]
+        stats_pairwise += ['diff_mod_rate_%s' % pair, 'pval_%s' % pair, 'z_score_%s' % pair]
     stats_one_vs_all = []
     for condition_name in condition_names:
         pair = '%s_vs_all' %condition_name # condition_name - the rest
-        stats_one_vs_all += ['p_w_mod_%s' %pair, 'w_mod_mean_diff_%s' % pair, 'z_score_%s' %pair]
+        stats_one_vs_all += ['diff_mod_rate_%s' % pair, 'pval_%s' %pair, 'z_score_%s' %pair]
 
     ### position header
-    header = ['idx', 'position', 'kmer']
+    header = ['id', 'position', 'kmer']
     
     # header += ['p_overlap']
     # header += ['x_x1', 'y_x1', 'x_x2', 'y_x2']
@@ -208,18 +208,20 @@ def get_result_table_header(data_info,method):
     else:
         names = run_names
     
-    ### model header
-    for name in names:
-        header += ['coverage_%s' % name]
-    header += ['mu_unmod', 'mu_mod', 'sigma2_unmod', 'sigma2_mod', 'conf_mu_unmod', 'conf_mu_mod','mod_assignment']
-    for name in names:
-        header += ['w_mod_%s' % name]
-    ###
+    ### stats header
     header += stats_pairwise
     if len(condition_names) > 2:
         header += stats_one_vs_all
     ###
+    ### model header
+    for name in names:
+        header += ['mod_rate_%s' % name]
+    for name in names:
+        header += ['coverage_%s' % name]
+    header += ['mu_unmod', 'mu_mod', 'sigma2_unmod', 'sigma2_mod', 'conf_mu_unmod', 'conf_mu_mod','mod_assignment']
+    ###
     
+    ### prefiltering header
     if method['prefiltering']:
         header += [method['prefiltering']['method']]
     return header
@@ -301,7 +303,7 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
                 z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2) # two=tailed
                 w_mod_mean_diff = np.mean(w_cond1)-np.mean(w_cond2)
 
-                stats_pairwise += [p_ws, w_mod_mean_diff, z_score]
+                stats_pairwise += [w_mod_mean_diff, p_ws, z_score]
             else:
                 stats_pairwise += [None, None, None]
 
@@ -322,7 +324,7 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
                     z_score, p_ws = stats.z_test(w_cond1, w_cond2, n_cond1, n_cond2)
                     w_mod_mean_diff = np.mean(w_cond1)-np.mean(w_cond2)
 
-                    stats_one_vs_all += [p_ws, w_mod_mean_diff, abs_z_score]
+                    stats_one_vs_all += [w_mod_mean_diff, p_ws, z_score]
                 else:
                     stats_one_vs_all += [None, None, None]
 
@@ -343,15 +345,16 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         ###
         ### prepare values to write
         row = [idx, position, kmer]
-        # row += [p_overlap]
-        # row += list_cdf_at_intersections
-        row += list(coverage_ordered)
-        row += mu_assigned + sigma2_assigned + conf_mu + mod_assignment
-        row += list(w_mod_ordered)
-
         row += stats_pairwise
         if len(condition_names) > 2:
             row += stats_one_vs_all
+
+        # row += [p_overlap]
+        # row += list_cdf_at_intersections
+        row += list(w_mod_ordered)
+        row += list(coverage_ordered)
+        row += mu_assigned + sigma2_assigned + conf_mu + mod_assignment
+
 
         if prefiltering is not None:
             row += [prefiltering[model.method['prefiltering']['method']]]

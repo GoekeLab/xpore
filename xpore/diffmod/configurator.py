@@ -16,9 +16,12 @@ class Configurator(object):
     def get_paths(self):
         paths = {}
         
-        paths['model_kmer'] = self.yaml['paths']['model_kmer']
+        if 'model_kmer' in self.yaml['paths']:
+            paths['model_kmer'] = os.path.abspath(self.yaml['paths']['model_kmer'])
+        else:
+            paths['model_kmer'] = '../../db/model_kmer.csv'
 
-        paths['out_dir'] = os.path.join(self.yaml['paths']['out_dir'], self.filename)
+        paths['out_dir'] = os.path.join(os.path.abspath(self.yaml['paths']['out_dir']), self.filename)
         paths.update(misc.makedirs(paths['out_dir'],sub_dirs=['models']))
         paths['model_filepath'] = os.path.join(paths['out_dir'], 'models', '%s.model')        
         return paths
@@ -31,14 +34,21 @@ class Configurator(object):
         return data
     
     def get_criteria(self):
-        return self.yaml['criteria']
+        criteria = {}
+        if 'criteria' in self.yaml.keys():
+            criteria = self.yaml['criteria']
+        else:
+            criteria['readcount_min'] = 30
+            criteria['readcount_max'] = 5000
+
+        return criteria
         
     def get_method(self):
-        if 'method' not in self.yaml.keys():
-            method = {}
-        else:
+        if 'method' in self.yaml.keys():
             method = self.yaml['method']
-        
+        else:
+            method = {}
+
         method.setdefault('name', 'gmm')
         method.setdefault('max_iters', 500)
         method.setdefault('stopping_criteria', 0.0001)
