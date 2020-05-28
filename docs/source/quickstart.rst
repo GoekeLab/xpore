@@ -19,10 +19,10 @@ After extraction, you will find::
 
 Each dataset under the ``data`` directory contains the following directories:
 
-* ``fast5`` : Raw signal FAST5 files.
-* ``fastq`` : Basecalled reads.
-* ``bamtx`` : Transcriptome-aligned sequence.
-* ``nanopolish``: Eventalign files obtained from `nanopolish <https://nanopolish.readthedocs.io/en/latest>`_.
+* ``fast5`` : Raw signal FAST5 files
+* ``fastq`` : Basecalled reads
+* ``bamtx`` : Transcriptome-aligned sequence
+* ``nanopolish``: Eventalign files obtained from `nanopolish <https://nanopolish.readthedocs.io/en/latest>`_
 
 (For demo, you can skip the first two steps, because ``bamtx`` and ``nanopolish`` are already there.)
 
@@ -61,12 +61,12 @@ Within each dataset directory, run::
 
 Output files:
 
-* ``eventalign.hdf5`` : Merged segments from ``nanopolish eventalign`` hierarchical keys  <TRANSCRIPT_ID>/<READ_ID>/events.  
-* ``eventalign.log`` : Log file.
-* ``data.json`` : Data used in ``xpore-diffmod``.
-* ``data.index`` : File index of ``data.json`` for random access per gene.
-* ``data.readcount`` : Summary of readcounts per gene.
-* ``data.log`` : Log file.
+* ``eventalign.hdf5`` : Merged segments from ``nanopolish eventalign``, stored with the hierarchical keys ``<TRANSCRIPT_ID>/<READ_ID>/events`` 
+* ``eventalign.log`` : Log file
+* ``data.json`` : Data used in ``xpore-diffmod``
+* ``data.index`` : File index of ``data.json`` for random access per gene
+* ``data.readcount`` : Summary of readcounts per gene
+* ``data.log`` : Log file
 
 4. Now that we have the data ready for estimating differential modification using ``xpore-diffmod``. 
 To call the differential modification between HEK293T-METTL3-KO-rep1 and HEK293T-WT-rep1, we can use the example confgiuration file ``diffmod.yaml`` by running::
@@ -75,8 +75,8 @@ To call the differential modification between HEK293T-METTL3-KO-rep1 and HEK293T
 
 Output files:
 
-* ``out/diffmod.yaml/diffmod.table`` : Result table of differential RNA modification across all tested positions.
-* ``out/diffmod.ini/diffmod.log`` : Log file.
+* ``out/diffmod.yaml/diffmod.table`` : Result table of differential RNA modification across all tested positions
+* ``out/diffmod.ini/diffmod.log`` : Log file
 
 We can rank the significanly differentially modified sites based on ``p_w_mod_HEK293T-KO_vs_HEK293T-WT``. The results are shown below.::
 

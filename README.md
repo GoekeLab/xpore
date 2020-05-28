@@ -31,10 +31,10 @@ After extraction, you will find
 
 Each dataset under the `data` directory contains the following directories
 
-* `fast5`: Raw signal FAST5 files.
-* `fastq`: Basecalled reads.
-* `bamtx`: Transcriptome-aligned sequence.
-* `nanopolish`: Eventalign files obtained from [nanopolish](https://nanopolish.readthedocs.io).
+* `fast5`: Raw signal FAST5 files
+* `fastq`: Basecalled reads
+* `bamtx`: Transcriptome-aligned sequence
+* `nanopolish`: Eventalign files obtained from [nanopolish](https://nanopolish.readthedocs.io)
 ```
 
 (For demo, you can skip the first two steps, because `bamtx` and `nanopolish` are already there.)
@@ -75,7 +75,7 @@ $xpore-dataprep --eventalign nanopolish/eventalign.txt \
 
 Output files: 
 
-* `eventalign.hdf5`: Merged segments from ``nanopolish eventalign``, stored with hierarchical keys <TRANSCRIPT_ID>/<READ_ID>/events.
+* `eventalign.hdf5`: Merged segments from `nanopolish eventalign`, stored with the hierarchical keys `<TRANSCRIPT_ID>/<READ_ID>/events`.
 * `eventalign.log`: Log file
 * `data.json`: Data used in xpore-diffmod
 * `data.index`: File index of data.json for random access per gene
@@ -88,8 +88,10 @@ Output files:
 $ xpore-diffmod --config_filepath ./tests/config/diffmod.yaml --n_processes 2 --save_table
 ```
 
-Output files: `out/diffmod.yaml/diffmod.table` `out/diffmod.ini/diffmod.log`.
+Output files: 
 
+* `out/diffmod.yaml/diffmod.table` : Result table of differential RNA modification across all tested positions
+* `out/diffmod.ini/diffmod.log` : Log file
 
 We can rank the significanly differentially modified sites based on `p_w_mod_HEK293T-KO_vs_HEK293T-WT`. The results are shown below.
 
