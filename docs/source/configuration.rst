@@ -18,13 +18,7 @@ The format of configuration file which is one of the inputs for ``xpore-diffmod`
 
         ...
 
-    paths:
-        model_kmer: <PATH_TO_MODEL_KMER>
-        out_dir: <DIR_PATH_FOR_OUTPUTS>
-
-    criteria:
-        readcount_min: <MINIMUM_READCOUNT>
-        readcount_max: <MAXIMUM_READCOUNT>
+    out: <DIR_PATH_FOR_OUTPUTS>
     
     (OPTIONAL)
     method:
