@@ -11,8 +11,8 @@ After extraction, you will find::
     
     |-- diffmod.yaml
     |-- data
-        |-- HEK293T-METTL3-KO-rep1
-        |-- HEK293T-WT-rep1
+        |-- HEK293T-METTL3-KO-rep1 # dataset dir
+        |-- HEK293T-WT-rep1 # dataset dir
     |-- db
         |-- model_kmer.csv
         |-- Homo_sapiens.GRCh38.cdna.mmi
@@ -22,44 +22,21 @@ Each dataset under the ``data`` directory contains the following directories:
 * ``fast5`` : Raw signal FAST5 files
 * ``fastq`` : Basecalled reads
 * ``bamtx`` : Transcriptome-aligned sequence
-* ``nanopolish``: Eventalign files obtained from `nanopolish <https://nanopolish.readthedocs.io/en/latest>`_
+* ``nanopolish``: Eventalign files obtained from `nanopolish eventalign <https://nanopolish.readthedocs.io/en/latest/quickstart_eventalign.html>`_
 
-(For demo, you can skip the first two steps, because ``bamtx`` and ``nanopolish`` are already there.)
-
-1. Align the sequence to transcriptome using `minimap2 <https://github.com/lh3/minimap2>`_. 
+1. Preprocess the data for each data set using ``xpore-dataprep``.
 Within each dataset directory, run::
 
-    mkdir bamtx
-    minimap2 -ax map-ont -uf -t 8 --secondary=no db/Homo_sapiens.GRCh38.cdna.mmi \
-    fastq/basecalled.fastq.gz > bamtx/aligned.sam 2>> bamtx/aligned.sam.log
-    samtools view -Sb bamtx/aligned.sam | samtools sort -o bamtx/aligned.bam - &>> bamtx/aligned.bam.log
-    samtools index bamtx/aligned.bam &>> bamtx/aligned.bam.index.log
-
-2. Align the raw signal to the reference sequence using nanopolish. 
-Within each dataset directory, run::
-
-    mkdir nanopolish
-    nanopolish index -d fast5 fastq/basecalled.fastq
-    nanopolish eventalign --reads fastq/basecalled.fastq \
-    --bam bamtx/aligned.bam \
-    --genome $proj_dir/db/Homo_sapiens.GRCh38.cdna.ncrna_wtChrIs_modified.fa \
-    --scale-events \
-    --signal-index \
+    # Within each dataset directory i.e. demo/data/HEK293T-METTL3-KO-rep1 and demo/data/HEK293T-WT-rep1, run
+    xpore-dataprep --eventalign nanopolish/eventalign.txt
     --summary nanopolish/summary.txt \
-    --threads 4 > nanopolish/eventalign.txt
-
-3. Preprocess the data for each data set using ``xpore-dataprep``.
-Within each dataset directory, run::
-
-    xpore-dataprep --eventalign nanopolish/eventalign.txt \
-    --summary nanopolish/summary.txt \
-    --read_count_min 10 \
-    --read_count_max 500 \
+    --readcount_min 10 \
+    --readcount_max 500 \
     --out_dir dataprep \
     --genome \
     --n_processes 2
 
-Output files:
+The output files are stored under ``dataprep`` in each  dataset directory:
 
 * ``eventalign.hdf5`` : Merged segments from ``nanopolish eventalign``, stored with the hierarchical keys ``<TRANSCRIPT_ID>/<READ_ID>/events`` 
 * ``eventalign.log`` : Log file
@@ -68,15 +45,20 @@ Output files:
 * ``data.readcount`` : Summary of readcounts per gene
 * ``data.log`` : Log file
 
-4. Now that we have the data ready for estimating differential modification using ``xpore-diffmod``. 
+Run ``xpore-dataprep -h`` for full usage.
+
+2. Now that we have the data ready for estimating differential modification using ``xpore-diffmod``. 
 To call the differential modification between HEK293T-METTL3-KO-rep1 and HEK293T-WT-rep1, we can use the example confgiuration file ``diffmod.yaml`` by running::
 
-    xpore-diffmod --config_filepath ./tests/config/diffmod.yaml --n_processes 2 --save_table
+    # At the demo directory where the configuration file is.
+    xpore-diffmod --config diffmod.yaml --n_processes 2 --save_table
 
-Output files:
+The output files are generated within the ``demo/out/diffmod.yaml`` directory:
 
-* ``out/diffmod.yaml/diffmod.table`` : Result table of differential RNA modification across all tested positions
-* ``out/diffmod.ini/diffmod.log`` : Log file
+* ``diffmod.table`` : Result table of differential RNA modification across all tested positions
+* ``diffmod.log`` : Log file
+
+Run ``xpore-diffmod`` for full usage.
 
 We can rank the significanly differentially modified sites based on ``p_w_mod_HEK293T-KO_vs_HEK293T-WT``. The results are shown below.::
 
