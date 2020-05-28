@@ -45,12 +45,12 @@ The output files are stored under ``dataprep`` in each  dataset directory:
 * ``data.readcount`` : Summary of readcounts per gene
 * ``data.log`` : Log file
 
-Run ``xpore-dataprep -h`` for full usage.
+Run ``xpore-dataprep -h`` to explore the full usage.
 
 2. Now that we have the data ready for estimating differential modification using ``xpore-diffmod``. 
-To call the differential modification between HEK293T-METTL3-KO-rep1 and HEK293T-WT-rep1, we can use the example confgiuration file ``diffmod.yaml`` by running::
+To call the differential modification between HEK293T-METTL3-KO-rep1 and HEK293T-WT-rep1, we can use the example confgiuration file ``diffmod.yaml``. ::
 
-    # At the demo directory where the configuration file is.
+    # At the demo directory where the configuration file is, run.
     xpore-diffmod --config diffmod.yaml --n_processes 2 --save_table
 
 The output files are generated within the ``demo/out/diffmod.yaml`` directory:
@@ -58,7 +58,7 @@ The output files are generated within the ``demo/out/diffmod.yaml`` directory:
 * ``diffmod.table`` : Result table of differential RNA modification across all tested positions
 * ``diffmod.log`` : Log file
 
-Run ``xpore-diffmod`` for full usage.
+Run ``xpore-diffmod -h`` to explore the full usage.
 
 We can rank the significanly differentially modified sites based on ``p_w_mod_HEK293T-KO_vs_HEK293T-WT``. The results are shown below.::
 
