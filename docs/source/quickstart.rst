@@ -11,7 +11,7 @@ Download and extract the demo dataset from our `S3 bucket <http://s3.ap-southeas
 After extraction, you will find::
     
     demo
-    |-- diffmod.yaml
+    |-- Hek293T_config.yaml
     |-- data
         |-- HEK293T-METTL3-KO-rep1 # dataset dir
         |-- HEK293T-WT-rep1 # dataset dir
@@ -23,7 +23,7 @@ Each dataset under the ``data`` directory contains the following directories:
 * ``bamtx`` : Transcriptome-aligned sequence
 * ``nanopolish``: Eventalign files obtained from `nanopolish eventalign <https://nanopolish.readthedocs.io/en/latest/quickstart_eventalign.html>`_
 
-1. Preprocess the data for each data set using ``xpore-dataprep``.::
+1. Preprocess the data for each data set using ``xpore-dataprep`` (This step will take a while..).::
 
     # Within each dataset directory i.e. demo/data/HEK293T-METTL3-KO-rep1 and demo/data/HEK293T-WT-rep1, run
     xpore-dataprep \
@@ -51,11 +51,11 @@ Below is how it looks like::
 
     data:
         KO:
-            rep1: ./data/HEK293T-METTL3-KO-rep1/dataprep
+            rep1: ./data/HEK293T-METTL3-KO-rep1/dataprep 
         WT:
             rep1: ./data/HEK293T-WT-rep1/dataprep
 
-    out: ./out
+    out: ./out # output dir
 
     method:
         prefiltering:
@@ -71,7 +71,7 @@ See the :ref:`Configuration file page <configuration>` for details.
     # At the demo directory where the configuration file is, run.
     xpore-diffmod --config Hek293T_config.yaml
 
-The output files are generated within the ``demo/out/Hek293T_config.yaml`` directory:
+The output files are generated within the ``out`` directory:
 
 * ``diffmod.table`` : Result table of differential RNA modification across all tested positions
 * ``diffmod.log`` : Log file
