@@ -1,5 +1,7 @@
 # xPore
 
+See [our documentation](https://xpore.readthedocs.io)!
+
 ### Installation
 
 xpore requires [Python3](https://www.python.org) to run.
@@ -54,7 +56,7 @@ The output files are stored under `dataprep` in each dataset directory:
 
 * `eventalign.hdf5`: Merged segments from `nanopolish eventalign`, stored with the hierarchical keys `<TRANSCRIPT_ID>/<READ_ID>/events`.
 * `eventalign.log`: Log file
-* `data.json`: Data used in xpore-diffmod
+* `data.json`: Preprocessed data for xpore-diffmod
 * `data.index`: File index of data.json for random access per gene
 * `data.readcount`: Summary of readcounts per gene
 * `data.log`: Log file

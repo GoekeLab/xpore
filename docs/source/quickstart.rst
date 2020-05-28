@@ -25,8 +25,7 @@ Each dataset under the ``data`` directory contains the following directories:
 * ``bamtx`` : Transcriptome-aligned sequence
 * ``nanopolish``: Eventalign files obtained from `nanopolish eventalign <https://nanopolish.readthedocs.io/en/latest/quickstart_eventalign.html>`_
 
-1. Preprocess the data for each data set using ``xpore-dataprep``.
-Within each dataset directory, run::
+1. Preprocess the data for each data set using ``xpore-dataprep``.::
 
     # Within each dataset directory i.e. demo/data/HEK293T-METTL3-KO-rep1 and demo/data/HEK293T-WT-rep1, run
     xpore-dataprep --eventalign nanopolish/eventalign.txt
@@ -41,7 +40,7 @@ The output files are stored under ``dataprep`` in each  dataset directory:
 
 * ``eventalign.hdf5`` : Merged segments from ``nanopolish eventalign``, stored with the hierarchical keys ``<TRANSCRIPT_ID>/<READ_ID>/events`` 
 * ``eventalign.log`` : Log file
-* ``data.json`` : Data used in ``xpore-diffmod``
+* ``data.json`` : Preprocessed data for ``xpore-diffmod``
 * ``data.index`` : File index of ``data.json`` for random access per gene
 * ``data.readcount`` : Summary of readcounts per gene
 * ``data.log`` : Log file
