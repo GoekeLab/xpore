@@ -19,7 +19,7 @@ class Configurator(object):
         if 'model_kmer' in self.yaml['paths']:
             paths['model_kmer'] = os.path.abspath(self.yaml['paths']['model_kmer'])
         else:
-            paths['model_kmer'] = '../../db/model_kmer.csv'
+            paths['model_kmer'] = os.path.join(os.path.dirname(__file__),'model_kmer.csv')
 
         paths['out_dir'] = os.path.join(os.path.abspath(self.yaml['paths']['out_dir']), self.filename)
         paths.update(misc.makedirs(paths['out_dir'],sub_dirs=['models']))

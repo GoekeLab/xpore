@@ -1,1 +1,1 @@
-include db/model_kmer.csv
+include xpore/diffmod/model_kmer.csv
