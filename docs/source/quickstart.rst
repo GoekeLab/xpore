@@ -11,7 +11,7 @@ Download and extract the demo dataset from our `S3 bucket <http://s3.ap-southeas
 After extraction, you will find::
     
     demo
-    |-- Hek293T_config.yaml
+    |-- Hek293T_config.yml
     |-- data
         |-- HEK293T-METTL3-KO-rep1 # dataset dir
         |-- HEK293T-WT-rep1 # dataset dir
@@ -43,7 +43,7 @@ The output files are stored under ``dataprep`` in each  dataset directory:
 
 Run ``xpore-dataprep -h`` to explore the full usage.
 
-2. Prepare a ``.yaml`` configuration file. With this YAML file, you can specify the information of your design experiment, the data directories, the output directory, and the method options.
+2. Prepare a ``.yml`` configuration file. With this YAML file, you can specify the information of your design experiment, the data directories, the output directory, and the method options.
 In the demo directory, there is an example configuration file ``Hek293T_config.yaml`` available that you can use as a starting template.
 Below is how it looks like::
 
@@ -69,7 +69,7 @@ See the :ref:`Configuration file page <configuration>` for details.
 ::
 
     # At the demo directory where the configuration file is, run.
-    xpore-diffmod --config Hek293T_config.yaml
+    xpore-diffmod --config Hek293T_config.yml
 
 The output files are generated within the ``out`` directory:
 

@@ -26,17 +26,7 @@ Contents
    configuration
    api
 
-Indices and tables
-------------------
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-* :ref:`installation`
-* :ref:`quickstart`
-* :ref:`configuration`
-* :ref:`api`
-
-References
-------------------
+Contact
+--------
+xPore is maintained by `Goeke's Lab <https://github.com/GoekeLab/xpore>`_
 
