@@ -30,7 +30,7 @@ class Configurator(object):
         data = defaultdict(dict)
         for condition_name, run_names in self.yaml['data'].items():
             for run_name, dirpath in run_names.items():
-                data[condition_name] = {get_condition_run_name(condition_name,run_name):dirpath}
+                data[condition_name][get_condition_run_name(condition_name,run_name)] = dirpath
         return data
     
     def get_criteria(self):

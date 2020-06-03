@@ -27,8 +27,8 @@ def get_args():
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     parser.add_argument('--genome', dest='genome', help='.',default=False,action='store_true') 
     parser.add_argument('--n_processes', dest='n_processes', help='Number of processes to run.',type=int, default=1)
-    parser.add_argument('--readcount_min', dest='readcount_min', help='Minimum of read counts per gene.',type=int, default=10)
-    parser.add_argument('--readcount_max', dest='readcount_max', help='Maximum of read counts per gene.',type=int, default=5000)
+    parser.add_argument('--readcount_min', dest='readcount_min', help='Minimum of read counts per gene.',type=int, default=1)
+    parser.add_argument('--readcount_max', dest='readcount_max', help='Maximum of read counts per gene.',type=int, default=np.inf)
     parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
 
     return parser.parse_args()
@@ -196,8 +196,12 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount
     gene_ids = set()
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
         for tx_id in f.keys():
-            g_id = ensembl.transcript_by_id(tx_id).gene_id
-            gene_ids = gene_ids.union([g_id])
+            try:
+                g_id = ensembl.transcript_by_id(tx_id).gene_id
+            except ValueError:
+                continue
+            else:
+                gene_ids = gene_ids.union([g_id])
     #
 
     # Load tasks into task_queue.
