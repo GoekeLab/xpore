@@ -18,7 +18,7 @@ def get_dummies(x):
     return np.array(X).T, labels
 
 
-def load_data(idx, data_dict, min_count=30, max_count=3000, pooling=False): 
+def load_data(idx, data_dict, min_count, max_count, pooling=False): 
     """
     Parameters
     ----------

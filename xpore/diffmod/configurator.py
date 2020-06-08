@@ -38,8 +38,8 @@ class Configurator(object):
         if 'criteria' in self.yaml.keys():
             criteria = self.yaml['criteria']
         else:
-            criteria['readcount_min'] = 30
-            criteria['readcount_max'] = 5000
+            criteria['readcount_min'] = 15
+            criteria['readcount_max'] = 1000
 
         return criteria
         
