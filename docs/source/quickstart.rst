@@ -11,9 +11,9 @@ Download and extract the demo dataset from our `S3 bucket <http://s3.ap-southeas
 After extraction, you will find::
     
     demo
-    |-- Hek293T_config.yml # configuration file
+    |-- Hek293T_config.yml  # configuration file
     |-- data
-        |-- HEK293T-METTL3-KO-rep1 # dataset dir
+        |-- HEK293T-METTL3-KO-rep1  # dataset dir
         |-- HEK293T-WT-rep1 # dataset dir
 
 Each dataset under the ``data`` directory contains the following directories:
