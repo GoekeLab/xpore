@@ -84,6 +84,8 @@ def read_last_line(filepath): # https://stackoverflow.com/questions/3346430/what
         return
     with open(filepath, "rb") as f:
         first = f.readline()        # Read the first line.
+        if first == b'':
+            return
         f.seek(-2, os.SEEK_END)     # Jump to the second last byte.
         while f.read(1) != b"\n":   # Until EOL is found...
             f.seek(-2, os.SEEK_CUR) # ...jump back the read byte plus one more.

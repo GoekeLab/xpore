@@ -83,7 +83,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
         f.write('%s\n' %(read_name))    
 
 
-def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes):
+def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume):
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
     for out_filetype in ['hdf5','log']:
@@ -91,9 +91,13 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes):
         locks[out_filetype] = multiprocessing.Lock()
         
         
-    # Create empty files.
-    open(out_paths['hdf5'],'w').close()
-    open(out_paths['log'],'w').close()
+    read_names_done = []
+    if resume and os.path.exists(out_paths['log']):
+        read_names_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]
+    else:
+        # Create empty files.
+        open(out_paths['hdf5'],'w').close()
+        open(out_paths['log'],'w').close()
 
     # Create communication queues.
     task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
@@ -118,7 +122,8 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes):
                 eventalign_per_read += [row_eventalign]
             else: 
                 # Load a read info to the task queue.
-                task_queue.put((read_name,eventalign_per_read,out_paths))
+                if read_name not in read_names_done:
+                    task_queue.put((read_name,eventalign_per_read,out_paths))
                 # Next read.
                 try:
                     row_summary = next(reader_summary)
@@ -221,10 +226,13 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_max,resume):
                     continue
                 # n_reads += len(f[tx_id])                
                 for read_id in f[tx_id].keys():
-                    if (n_reads <= readcount_max) and (read_id not in read_ids):
+                    if (n_reads < readcount_max) and (read_id not in read_ids):
                         data_dict[read_id] = f[tx_id][read_id]['events'][:]
                         read_ids += [read_id]
                         n_reads += 1
+                    elif n_reads >= readcount_max:
+                        break
+                    
             if len(read_ids) > 0:
                 task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
                 gene_ids_processed += [gene_id]
@@ -383,10 +391,12 @@ def parallel_preprocess_tx(out_dir,n_processes,readcount_max,resume):
             n_reads = 0
             data_dict = dict()
             for read_id in f[tx_id].keys():
-                if n_reads <= readcount_max:
+                if n_reads < readcount_max:
                     data_dict[read_id] = f[tx_id][read_id]['events'][:]
                     read_ids += [read_id]
                     n_reads += 1
+                else:
+                    break
             task_queue.put((tx_id,data_dict,out_paths)) # Blocked if necessary until a free slot is available. 
             tx_ids_processed += [tx_id]
 
@@ -495,7 +505,7 @@ def main():
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
     eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
     if not helper.is_successful(eventalign_log_filepath):
-        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
+        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
