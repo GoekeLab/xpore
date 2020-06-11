@@ -123,7 +123,7 @@ def save_models(models, model_filepath):  # per gene/transcript
         model_file[idx][position].create_group('nodes')  # ['x','y','z','w','mu_tau'] => store only their params
         for node_name in model.nodes:
             model_file[idx][position]['nodes'].create_group(node_name)
-            if model.nodes[node_name].data is not None: # To be optional.
+            if model.nodes[node_name].data is not None: # To make it optional.
                 value = model.nodes[node_name].data
                 if node_name in ['y_run_names','y_condition_names']:
                     value = [val.encode('UTF-8') for val in value]

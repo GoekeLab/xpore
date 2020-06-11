@@ -14,23 +14,25 @@ from ..diffmod import io
 from ..diffmod.statstest import StatsTest
 
 def get_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+    optional = parser._action_groups.pop()
+    required = parser.add_argument_group('required arguments')
+    
     # Required arguments
-    parser.add_argument('--config', dest='config', help='YAML configuraion filepath.',required=True)
+    required.add_argument('--config', dest='config', help='yaml configuraion filepath.',required=True)
 
     # Optional arguments
-    parser.add_argument('--n_processes', dest='n_processes', help='Number of processes to run.',type=int,default=1)
-    parser.add_argument('--save_table', dest='save_table', help='Save the result table.',default=True,action='store_true') 
-    parser.add_argument('--save_models', dest='save_models', help='Save the models.',default=False,action='store_true') # todo
-    parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
+    optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int,default=1)
+    optional.add_argument('--save_models', dest='save_models', help='save the models.',default=False,action='store_true') # todo
+    optional.add_argument('--resume', dest='resume', help='resume from the previous run.',default=False,action='store_true') 
     
-    parser.add_argument('--ids', dest='ids', help='Gene ids or transcript ids.',default=[],nargs='*')
+    optional.add_argument('--ids', dest='ids', help='gene ids or transcript ids.',default=[],nargs='*')
 
-
+    parser._action_groups.append(optional)
     return parser.parse_args()
         
-def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_params, out_paths, save_models, save_table,locks):
+def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_params, out_paths, save_models,locks):
     """
     Run the model on each posiiton across the given idx.
     """
@@ -79,7 +81,7 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
     if save_models & (len(models)>0): #todo: 
         print(out_paths['model_filepath'],idx)
         io.save_models(models,out_paths['model_filepath'])
-    if save_table & (len(models)>0):
+    if len(models)>0:
         # Generating the result table.
         table = io.generate_result_table(models,data_info)
         with locks['table'], open(out_paths['table'],'a') as f:
@@ -99,7 +101,6 @@ def main():
     n_processes = args.n_processes       
     config_filepath = args.config
     save_models = args.save_models
-    save_table = args.save_table
     resume = args.resume
     ids = args.ids
 
@@ -129,14 +130,13 @@ def main():
 
     # Writing the starting of the files.
     ids_done = []
-    if save_table:
-        if resume and os.path.exists(out_paths['log']):
-            ids_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]  
-        else:
-            with open(out_paths['table'],'w') as f:
-                csv.writer(f,delimiter=',').writerow(io.get_result_table_header(data_info,method))
-            with open(out_paths['log'],'w') as f:
-                f.write(helper.decor_message('diffmod'))
+    if resume and os.path.exists(out_paths['log']):
+        ids_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]  
+    else:
+        with open(out_paths['table'],'w') as f:
+            csv.writer(f,delimiter=',').writerow(io.get_result_table_header(data_info,method))
+        with open(out_paths['log'],'w') as f:
+            f.write(helper.decor_message('diffmod'))
 
 
     # Create and start consumers.
@@ -173,19 +173,6 @@ def main():
         if resume and (idx in ids_done):
             continue
         
-        ### memory issue #todo
-        # n_reads_sum = 0
-        # for run_name in data_info.keys():
-        #     try:
-        #         n_reads = df_readcount[run_name].loc[idx]
-        #     except KeyError:
-        #         continue
-        #     else:
-        #         n_reads_sum += n_reads
-        # if n_reads_sum > 10000:
-        #     continue
-        ###
-        
         data_dict = dict()
         for condition_name, run_names in data_info.items():
             for run_name, dirpath in run_names.items():
@@ -205,7 +192,7 @@ def main():
         out_paths['model_filepath'] = os.path.join(paths['models'],'%s.hdf5' %idx)
         #
         # if data_dict[run_name][idx] is not None: # todo: remove this line. Fix in dataprep
-        task_queue.put((idx, data_dict, data_info, method, criteria, model_kmer, prior_params, out_paths,save_models,save_table)) # Blocked if necessary until a free slot is available.
+        task_queue.put((idx, data_dict, data_info, method, criteria, model_kmer, prior_params, out_paths,save_models)) # Blocked if necessary until a free slot is available.
 
         
     # Put the stop task into task_queue.
@@ -218,16 +205,15 @@ def main():
     for f in f_data.values():
         f.close()   
         
-    if save_table:
-        with open(out_paths['log'],'a+') as f:
-            f.write(helper.decor_message('successfully finished'))
+    with open(out_paths['log'],'a+') as f:
+        f.write(helper.decor_message('successfully finished'))
         
 
 if __name__ == '__main__':
     """
     Usage:
         xpore-diffmod --config CONFIG [--n_processes N_PROCESSES] \
-                     [--save_table] [--save_models] [--resume] \
+                     [--save_models] [--resume] \
                      [--ids [IDS [IDS ...]]]
     """
     main()

@@ -10,8 +10,7 @@ xPore is a Python package for detection of differentail RNA modifications from N
 To install the latest release, run::
 
     pip install xpore
-    pyensembl install --release 91 --species homo_sapiens
-
+    pyensembl install --release 91 --species homo_sapiens  # Please specify the compatible Ensembl release with your data when you install it.
 See the :ref:`Installation page <installation>` for details.
 
 To start, please follow the instructions in :ref:`Quickstart page <quickstart>`. 

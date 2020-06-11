@@ -14,22 +14,26 @@ from . import helper
 from ..utils import misc
 
 def get_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    optional = parser._action_groups.pop()
+    required = parser.add_argument_group('required arguments')
 
     # Required arguments
-    parser.add_argument('--eventalign', dest='eventalign', help='Eventalign filepath from nanopolish.',required=True)
-    parser.add_argument('--summary', dest='summary', help='Summary filepath from nanopolish.',required=True)
-    parser.add_argument('--out_dir', dest='out_dir', help='Output directory.',required=True)
+    required.add_argument('--eventalign', dest='eventalign', help='eventalign filepath, the output from nanopolish.',required=True)
+    required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
+    required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
     
-    parser.add_argument('--ensembl', dest='ensembl', help='ensembl version.',type=int, default=91)
+    required.add_argument('--ensembl', dest='ensembl', help='ensembl version for gene-transcript mapping.',type=int, default=91)
 
     # Optional
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
-    parser.add_argument('--genome', dest='genome', help='.',default=False,action='store_true') 
-    parser.add_argument('--n_processes', dest='n_processes', help='Number of processes to run.',type=int, default=1)
-    parser.add_argument('--readcount_max', dest='readcount_max', help='Maximum of read counts per gene.',type=int, default=1000)
-    parser.add_argument('--resume', dest='resume', help='Resume.',default=False,action='store_true') #todo
+    optional.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true') 
+    optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int, default=1)
+    optional.add_argument('--readcount_max', dest='readcount_max', help='maximum read counts per gene.',type=int, default=1000)
+    optional.add_argument('--resume', dest='resume', help='resume from the previous run.',default=False,action='store_true') #todo
 
+    parser._action_groups.append(optional)
     return parser.parse_args()
 
 def combine(read_name,eventalign_per_read,out_paths,locks):

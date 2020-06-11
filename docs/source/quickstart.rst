@@ -86,3 +86,10 @@ We can rank the significantly differentially modified sites based on ``pval_HEK2
     ENSG00000159111   47824138  GGGAC               -0.757891   1.898161e-73        -18.128515  ...      3.965195    9.877299       0.861480     0.359984           lower  9.708552e-08
     ENSG00000159111   47824137  GGACA               -0.604056   7.614675e-24        -10.068479  ...      7.164075    4.257725       0.553929     0.353160           lower  2.294337e-10
     ENSG00000114125  141745249  GGACT               -0.514980   2.779122e-19         -8.977134  ...      5.215243   20.598471       0.954968     0.347174           lower  1.304111e-06
+
+**Notes:** We can consider only one modification type per k-mer by finding the majority `mod_assignment` of each k-mer. 
+For example, the majority of the modification means of `GGACT` (`mu_mod`) is lower than the non-modification counterpart (`mu_unmod`). 
+This can be achieved by simply running `groupby` on the `kmer` and `mod_assignment` columns in Python.
+We can then remove those positions with the `mod_assigment` are not in line with the majority in order to restrict ourselves with one modification type per kmer in the analysis.
+Please find more details in our paper.
+
