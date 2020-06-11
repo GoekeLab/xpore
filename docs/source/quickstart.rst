@@ -89,7 +89,7 @@ We can rank the significantly differentially modified sites based on ``pval_HEK2
 
 **Notes:** We can consider only one modification type per k-mer by finding the majority ``mod_assignment`` of each k-mer. 
 For example, the majority of the modification means of ``GGACT`` (``mu_mod``) is lower than the non-modification counterpart (``mu_unmod``). 
-This can be achieved by simply running ``groupby`` on the ``kmer`` and ``mod_assignment` columns in Python.
+This can be achieved by simply running ``groupby`` on the ``kmer`` and ``mod_assignment`` columns in Python.
 We can then remove those positions with the ``mod_assigment`` are not in line with the majority in order to restrict ourselves with one modification type per kmer in the analysis.
 Please find more details in our paper.
 
