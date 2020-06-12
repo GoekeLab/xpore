@@ -1,6 +1,6 @@
 ![alt text](https://github.com/GoekeLab/xpore/blob/master/figures/xpore_textlogo.png "xPore")
 
-Python package to detect differential RNA modifications from direct RNA sequencing.
+Python package for detection of differential RNA modifications from direct RNA sequencing.
 
 [![PyPI version](https://badge.fury.io/py/xpore.svg)](https://badge.fury.io/py/xpore)
 [![Documentation Status](https://readthedocs.org/projects/xpore/badge/?version=latest)](https://xpore.readthedocs.io/en/latest/?badge=latest)
@@ -10,7 +10,8 @@ Python package to detect differential RNA modifications from direct RNA sequenci
 
 ### PyPI installation (recommended)
 
-xPore requires [Python3](https://www.python.org) to run.
+xPore requires [Python3](https://www.python.org).
+To install the latest release, run
 
 ```sh
 $ pip install xpore 

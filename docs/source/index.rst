@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to xpore's documentation!
+Welcome to xPore's documentation!
 =================================
 xPore is a Python package for detection of differentail RNA modifications from Nanopore sequencing data.
 
@@ -11,6 +11,7 @@ To install the latest release, run::
 
     pip install xpore
     pyensembl install --release 91 --species homo_sapiens  # Please specify the compatible Ensembl release with your data when you install it.
+
 See the :ref:`Installation page <installation>` for details.
 
 To start, please follow the instructions in :ref:`Quickstart page <quickstart>`. 
@@ -25,7 +26,11 @@ Contents
    configuration
    api
 
-Contact
+Contacts
 --------
-xPore is maintained by `Goeke's Lab <https://github.com/GoekeLab/xpore>`_
+xPore is maintained by `Ploy N. Pratanwanich <https://github.com/ploy-rukawa>`_ and `Jonathan Goeke <https://github.com/jonathangoeke>`_ from the Genome Institute of Singapore. 
+
+If you want to contribute, please leave an issue in `our repo <https://github.com/GoekeLab/xpore>`_
+
+Thank you!
 
