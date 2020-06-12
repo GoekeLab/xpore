@@ -28,7 +28,7 @@ Contents
 
 Contacts
 --------
-xPore is maintained by `Ploy N. Pratanwanich <https://github.com/ploy-rukawa>`_ and `Jonathan Goeke <https://github.com/jonathangoeke>`_ from the Genome Institute of Singapore. 
+xPore is maintained by `Ploy N. Pratanwanich <https://github.com/ploy-rukawa>`_ and `Jonathan Goeke <https://github.com/jonathangoeke>`_ from the Genome Institute of Singapore, A*STAR. 
 
 If you want to contribute, please leave an issue in `our repo <https://github.com/GoekeLab/xpore>`_
 
