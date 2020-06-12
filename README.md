@@ -19,6 +19,10 @@ $ pyensembl install --release 91 --species homo_sapiens  # please specify the co
 
 See our documentation [here](https://xpore.readthedocs.io)!
 
-xPore is maintained by [Ploy N. Pratanwanich](https://github.com/ploy-rukawa) and [Jonathan Goeke](https://github.com/jonathangoeke) from the Genome Institute of Singapore. If you want to contribute, please leave an issue. 
+---
+
+xPore is maintained by [Ploy N. Pratanwanich](https://github.com/ploy-rukawa) and [Jonathan Goeke](https://github.com/jonathangoeke) from the Genome Institute of Singapore. 
+
+If you want to contribute, please leave an issue in our repo. 
 
 Thank you!
