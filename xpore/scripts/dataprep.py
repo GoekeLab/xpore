@@ -25,6 +25,7 @@ def get_args():
     required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
     
     required.add_argument('--ensembl', dest='ensembl', help='ensembl version for gene-transcript mapping.',type=int, default=91)
+    required.add_argument('--species', dest='species', help='species for ensembl gene-transcript mapping.', default='homo_sapiens)
 
     # Optional
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
@@ -499,6 +500,7 @@ def main():
     summary_filepath = args.summary
     out_dir = args.out_dir
     ensembl_version = args.ensembl
+    ensembl_species = args.species
     readcount_max = args.readcount_max
     resume = args.resume
     genome = args.genome
@@ -513,7 +515,7 @@ def main():
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
-        ensembl = EnsemblRelease(ensembl_version) # human reference genome GRCh38 release 91 used in the ont mapping.    
+        ensembl = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping.    
         parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_max,resume)
 
     else:
