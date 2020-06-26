@@ -25,7 +25,7 @@ def get_args():
     required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
     
     required.add_argument('--ensembl', dest='ensembl', help='ensembl version for gene-transcript mapping.',type=int, default=91)
-    required.add_argument('--species', dest='species', help='species for ensembl gene-transcript mapping.', default='homo_sapiens)
+    required.add_argument('--species', dest='species', help='species for ensembl gene-transcript mapping.', default='homo_sapiens')
 
     # Optional
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
