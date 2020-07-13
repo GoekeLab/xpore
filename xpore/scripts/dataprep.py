@@ -69,7 +69,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
     eventalign_result["dwell_time"] = sum_dwell_time / total_length
     eventalign_result.reset_index(inplace=True)
 
-    eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]
+    eventalign_result['transcript_id'] = [contig for contig in eventalign_result['contig']]
     eventalign_result['transcriptomic_position'] = pandas.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
     # eventalign_result = misc.str_encode(eventalign_result)
     eventalign_result['read_id'] = [read_name]*len(eventalign_result)
@@ -157,7 +157,60 @@ def prepare_for_inference(tx,gt_dir,read_task,all_kmers,out_dir,locks):
     with locks['log'], open(os.path.join(out_dir, "inference_preparation.log"),'a') as f:
         f.write('%s\n' %(tx))    
 
-def parallel_prepare_for_inference(eventalign_filepath,gt_dir,eventalign_prep_dir,n_processes):
+        
+def prepare_for_inference_tx(tx, read_task, all_kmers, out_dir, locks):    
+    reads = numpy.concatenate(read_task)
+    reads = reads[numpy.isin(reads["reference_kmer"], all_kmers)] # Filter for motifs
+    reads = reads[numpy.argsort(reads["transcriptomic_position"])] # sort by reference kmer
+    positions, indices = numpy.unique(reads["transcriptomic_position"],return_index=True) # retrieve group indexing
+
+    for i in range(len(positions)):
+        pos = positions[i]
+        if len(positions) > 1:
+            start_idx = indices[i]
+            end_idx = indices[i + 1] if i < len(positions) - 1 else None
+            read = reads[start_idx:end_idx]
+            kmer = read["reference_kmer"][0].decode()
+            # Converting to numpy array
+            
+            X = read[["norm_mean", "norm_std", "dwell_time"]]\
+                        .astype([('norm_mean', '<f8'), ('norm_std', '<f8'), ('dwell_time', '<f8')]).view('<f8')
+            read_ids = read["read_id"].view('<S36')
+            start_event_indices = read["start_idx"].view('<i8')
+            end_event_indices = read["end_idx"].view('<i8')
+        else:
+            read = reads[0]
+            kmer = read["reference_kmer"].item().decode()
+            # Converting to numpy array when there is only one entry
+            
+            X = numpy.array(read[["norm_mean", "norm_std", "dwell_time"]].tolist())
+            read_ids = numpy.array(read["read_id"].tolist())
+            start_event_indices = numpy.array(read["start_idx"].tolist())
+            end_event_indices = numpy.array(read["end_idx"].tolist())
+        
+        # Reshaping columns
+        X = X.reshape(-1, 3)
+        read_ids = read_ids.reshape(-1, 1)
+        start_event_indices = start_event_indices.reshape(-1, 1)
+        end_event_indices = end_event_indices.reshape(-1, 1)
+
+        # Saving output in hdf5 file format
+
+        n_reads = len(X)
+        fname = os.path.join(out_dir, '{}_{}_{}_{}.hdf5'.format(tx, pos, kmer, n_reads))
+        with h5py.File(fname, 'w') as f:
+            assert(n_reads == len(read_ids))
+            f['X'] = X
+            f['read_ids'] = read_ids
+            f['start_idx'] = start_event_indices
+            f['end_idx'] = end_event_indices
+        f.close()
+
+    with locks['log'], open(os.path.join(out_dir, "prepare_for_inference.log"),'a') as f:
+        f.write('%s\n' %(tx))   
+        
+        
+def parallel_prepare_for_inference(eventalign_filepath,eventalign_prep_dir,n_processes):
     # Create output path and locks.
     out_dir = os.path.join(eventalign_prep_dir, "inference")
     
@@ -173,7 +226,7 @@ def parallel_prepare_for_inference(eventalign_filepath,gt_dir,eventalign_prep_di
     task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
 
     # Create and start consumers.
-    consumers = [helper.Consumer(task_queue=task_queue,task_function=prepare_for_inference,locks=locks) for i in range(n_processes)]
+    consumers = [helper.Consumer(task_queue=task_queue,task_function=prepare_for_inference_tx,locks=locks) for i in range(n_processes)]
     for p in consumers:
         p.start()
         
@@ -187,7 +240,7 @@ def parallel_prepare_for_inference(eventalign_filepath,gt_dir,eventalign_prep_di
             read_task = []
             for read in f[tx]:
                 read_task.append(f[tx][read]['events'][:])
-            task_queue.put((tx,gt_dir,read_task,all_kmers,out_dir))
+            task_queue.put((tx,read_task,all_kmers,out_dir))
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
@@ -480,9 +533,9 @@ def main():
     eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
     if not helper.is_successful(eventalign_log_filepath):
         parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes)
-    
+    parallel_prepare_for_inference(os.path.join(out_dir, 'eventalign.hdf5'), out_dir, n_processes)
     # (2) Generate segmented hdf5 files for prediction
-    parallel_prepare_for_inference(os.path.join(out_dir, 'eventalign.hdf5'),gt_mapping_dir,out_dir,n_processes)
+#     parallel_prepare_for_inference(os.path.join(out_dir, 'eventalign.hdf5'),gt_mapping_dir,out_dir,n_processes)
     # (2) Generate read count from the bamtx file.
     # read_count_filepath = os.path.join(out_dir,'read_count.csv')
     # if os.path.exists(read_count_filepath):
