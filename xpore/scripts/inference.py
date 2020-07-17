@@ -124,10 +124,11 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--n_processors', dest='n_processors', default=None,
                         help="number of workers for dataloader")
     args = parser.parse_args()
-    state_dict = torch.load(os.path.join(args.model_path, "best_model.pt"))
-    norm_constant = pd.read_csv(os.path.join(args.model_path, "norm_constant.csv"))    
     device = args.device
+
+    norm_constant = pd.read_csv(os.path.join(args.model_path, "norm_constant.csv"))    
     model = MultiInstanceNNEmbedding(dim_cov=3, p=8, embedding_dim=2).to(device)
+    state_dict = torch.load(os.path.join(args.model_path, "best_model.pt")).to(device)
     model.load_state_dict(state_dict)
     
     data_dir = os.path.join(args.input_dir, "inference")
