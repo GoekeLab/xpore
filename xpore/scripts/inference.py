@@ -111,7 +111,7 @@ def extract_positions(tx_dir):
                          'kmer': kmers})
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description="a script to preprocess all files in a nanopolish event align directory")
     parser.add_argument('-i', '--input', dest='input_dir', default=None,
                         help="Directory containing the inference folder to predict on")
@@ -148,3 +148,8 @@ if __name__ == '__main__':
     df["proba"] = np.array(y_preds)
     df[["transcript_id", "kmer", "n_samples", "proba", "filepath"]]\
         .to_csv(os.path.join(args.out_dir, "m6Anet_predictions.csv.gz"), index=False)
+
+
+if __name__ == '__main__':
+    main()
+
