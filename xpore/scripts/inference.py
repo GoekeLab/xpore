@@ -128,7 +128,7 @@ def main():
 
     norm_constant = pd.read_csv(os.path.join(args.model_path, "norm_constant.csv"))    
     model = MultiInstanceNNEmbedding(dim_cov=3, p=8, embedding_dim=2).to(device)
-    state_dict = torch.load(os.path.join(args.model_path, "best_model.pt")).to(device)
+    state_dict = torch.load(os.path.join(args.model_path, "best_model.pt"), map_location=device)
     model.load_state_dict(state_dict)
     
     data_dir = os.path.join(args.input_dir, "inference")
