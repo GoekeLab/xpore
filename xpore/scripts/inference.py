@@ -1,270 +1,149 @@
 import argparse
-import numpy
-import pandas
+import torch
+import pandas as pd
+import numpy as np
 import os
-import multiprocessing 
 import h5py
-import csv
-import json
-import subprocess
-import pysam #0-based leftmost coordinate
+from torch.utils.data import DataLoader, Dataset
 from itertools import product
-from pyensembl import EnsemblRelease
-from pyensembl import Genome
-from tqdm import tqdm
-from operator import itemgetter
-from collections import defaultdict
-
-from . import helper
-from ..utils import misc
-
-def get_args():
-    parser = argparse.ArgumentParser()
-
-    # Required arguments
-    parser.add_argument('--mapping', dest='mapping', default=None, help='gene-transcript mapping directory.')
-    parser.add_argument('--out_dir', dest='out_dir', help='Output directory.',required=True)
 
 
-    # Optional
-    # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
-    parser.add_argument('--n_processes', dest='n_processes', help='Number of processes.',type=int, default=1)
+class MultiInstanceNNEmbedding(torch.nn.Module):
+    def __init__(self, dim_cov, p=1, embedding_dim=2):
+        """
+        fix_classifier: if True the last dense layer is fixed to a random orthogonal matrix
+        """
+        super(MultiInstanceNNEmbedding, self).__init__()
+        self.p = p
+        self.embedding_dim = embedding_dim
+        self.embedding = torch.nn.Embedding(18, self.embedding_dim)
+        self.linear1 = torch.nn.Linear(dim_cov + self.embedding_dim, 150, bias=True)
+        self.linear2 = torch.nn.Linear(150, p, bias=True)
+        self.linear3 = torch.nn.Linear(5 * p, 150, bias=True)
+        self.linear4 = torch.nn.Linear(150, 1, bias=True)
+
+    def forward(self, x, kmer, indices):
+        """ compute probability at site level"""
+        kmer_embedding = self.embedding(kmer)
+        x = torch.cat([x, kmer_embedding], axis=1)
+        x = torch.relu(self.linear1(x))
+        x = torch.relu(self.linear2(x))
+        x = self.aggregate(x, indices)
+        x = x.view(-1, 5 * self.p)
+        x = torch.relu(self.linear3(x))
+        out = torch.sigmoid(self.linear4(x))
+        return out
+
+    def aggregate(self, x, indices):
+        grouped_tensors = [x[idx] for idx in indices]
+        mean = torch.stack([torch.mean(tensor, axis=0) for tensor in grouped_tensors])
+        std = torch.stack([torch.var(tensor, axis=0) for tensor in grouped_tensors])
+        maximum = torch.stack([torch.max(tensor, axis=0).values for tensor in grouped_tensors])
+        minimum = torch.stack([torch.min(tensor, axis=0).values for tensor in grouped_tensors])
+        median = torch.stack([torch.median(tensor, axis=0).values for tensor in grouped_tensors])
+        aggregated_tensors = torch.stack([mean, std, minimum, median, maximum], axis=1)
+        return aggregated_tensors
 
 
-    
-    return parser.parse_args()
+class ValDS(Dataset):
 
-def combine(read_name,eventalign_per_read,out_paths,locks):
-    eventalign_result = pandas.DataFrame.from_records(eventalign_per_read)
+    def __init__(self, norm_constant, data_dir, sites=None):
+        self.data_dir = data_dir
+        self.norm_constant = norm_constant.set_index("0")
+        
+        self.all_kmers = list(["".join(x) for x in product(['A', 'G', 'T'], ['G', 'A'], ['A'], ['C'], ['A', 'C', 'T'])])
+        self.kmer_to_int = {self.all_kmers[i]: i for i in range(len(self.all_kmers))}
+        self.int_to_kmer =  {i: self.all_kmers[i] for i in range(len(self.all_kmers))}
+        
+        if sites is None:
+            all_files = os.listdir(data_dir)
+            self.sites = np.array([os.path.join(data_dir, fname) for fname in all_files])
+            self.kmers = np.array([self.kmer_to_int[x.split("_")[2]] for x in all_files])
 
-    cond_successfully_eventaligned = eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
-    eventalign_result = eventalign_result[cond_successfully_eventaligned]
-
-    keys = ['read_index','contig','position','reference_kmer'] # for groupby
-    eventalign_result['length'] = pandas.to_numeric(eventalign_result['end_idx'])-pandas.to_numeric(eventalign_result['start_idx'])
-    eventalign_result['sum_norm_mean'] = pandas.to_numeric(eventalign_result['event_level_mean']) * eventalign_result['length']
-    eventalign_result['sum_norm_std'] = pandas.to_numeric(eventalign_result['event_stdv']) * eventalign_result['length']
-    eventalign_result['sum_dwell_time'] = pandas.to_numeric(eventalign_result['event_length']) * eventalign_result['length']
-
-    eventalign_result = eventalign_result.groupby(keys)  
-    sum_norm_mean = eventalign_result['sum_norm_mean'].sum() 
-    sum_norm_std = eventalign_result["sum_norm_std"].sum()
-    sum_dwell_time = eventalign_result["sum_dwell_time"].sum()
-
-    start_idx = eventalign_result['start_idx'].min().astype('i8')
-    end_idx = eventalign_result['end_idx'].max().astype('i8')
-    total_length = eventalign_result['length'].sum()
-
-    eventalign_result = pandas.concat([start_idx,end_idx],axis=1)
-    eventalign_result['norm_mean'] = sum_norm_mean / total_length
-    eventalign_result["norm_std"] = sum_norm_std / total_length
-    eventalign_result["dwell_time"] = sum_dwell_time / total_length
-    eventalign_result.reset_index(inplace=True)
-
-    eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]
-    eventalign_result['transcriptomic_position'] = pandas.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
-    # eventalign_result = misc.str_encode(eventalign_result)
-    eventalign_result['read_id'] = [read_name]*len(eventalign_result)
-
-    features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','norm_std','dwell_time','start_idx','end_idx']
-    # features_dtype = numpy.dtype([('read_id', 'object'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'),
-    #                               ('end_idx', '<i8')])
-    # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean'] #original features that Ploy's using.
-
-    df_events_per_read = eventalign_result[features]
-    # print(df_events_per_read.head())
-    
-    # write to file.
-    df_events_per_read = df_events_per_read.set_index(['transcript_id','read_id'])
-
-    with locks['hdf5'], h5py.File(out_paths['hdf5'],'a') as hf:
-        for tx_id,read_id in df_events_per_read.index.unique():
-            df2write = df_events_per_read.loc[[tx_id,read_id],:].reset_index() 
-            events = numpy.rec.fromrecords(misc.str_encode(df2write[features]),names=features) #,dtype=features_dtype
-            
-            hf_tx = hf.require_group('%s/%s' %(tx_id,read_id))
-            if 'events' in hf_tx:
-                continue
-            else:
-                hf_tx['events'] = events
-    
-    with locks['log'], open(out_paths['log'],'a') as f:
-        f.write('%s\n' %(read_name))    
-
-
-def prepare_for_inference(tx,gt_dir,read_task,all_kmers,out_dir,locks):
-    reads = numpy.concatenate(read_task)
-    try:
-        gt_map = pandas.read_csv(os.path.join(gt_dir,tx,"gt_mapping.csv.gz")).set_index("tx_pos")
-    except FileNotFoundError:
-        with locks['log'], open(os.path.join(out_dir, "prepare_for_inference.log"),'a') as f:
-            f.write('Error at %s\n' %(tx))
-        return
-
-    gene = gt_map.iloc[0]["g_id"]
-    reads = reads[numpy.isin(reads["reference_kmer"], all_kmers)] # Filter for motifs
-    reads = reads[numpy.argsort(reads["transcriptomic_position"])] # sort by reference kmer
-    positions, indices = numpy.unique(reads["transcriptomic_position"],return_index=True) # retrieve group indexing
-
-    for i in range(len(positions)):
-        pos = positions[i]
-        gpos = gt_map.loc[pos]["g_pos"]
-        kmer = gt_map.loc[pos]["kmer"]
-        if len(positions) > 1:
-            start_idx = indices[i]
-            end_idx = indices[i + 1] if i < len(positions) - 1 else None
-            read = reads[start_idx:end_idx]
-            
-            # Converting to numpy array
-            
-            X = read[["norm_mean", "norm_std", "dwell_time"]]\
-                        .astype([('norm_mean', '<f8'), ('norm_std', '<f8'), ('dwell_time', '<f8')]).view('<f8')
-            read_ids = read["read_id"].view('<S36')
-            start_event_indices = read["start_idx"].view('<i8')
-            end_event_indices = read["end_idx"].view('<i8')
         else:
-            read = reads[0]
-
-            # Converting to numpy array when there is only one entry
+            self.sites = np.array([os.path.join(data_dir, fname) for fname in sites])
+            self.kmers = np.array([self.kmer_to_int[x.split("_")[2]] for x in sites])
             
-            X = numpy.array(read[["norm_mean", "norm_std", "dwell_time"]].tolist())
-            read_ids = numpy.array(read["read_id"].tolist())
-            start_event_indices = numpy.array(read["start_idx"].tolist())
-            end_event_indices = numpy.array(read["end_idx"].tolist())
-        
-        # Reshaping columns
-        X = X.reshape(-1, 3)
-        read_ids = read_ids.reshape(-1, 1)
-        start_event_indices = start_event_indices.reshape(-1, 1)
-        end_event_indices = end_event_indices.reshape(-1, 1)
+            
+    def __len__(self):
+        return len(self.sites)
 
-        # Saving output in hdf5 file format
-
+    def __getitem__(self, idx):
+        kmer = self.kmers[idx]
+        norm_info = self.norm_constant.loc[self.int_to_kmer[kmer]].values
+        mean, std = norm_info[:3], norm_info[3:]
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        f = h5py.File(self.sites[idx], 'r')
+        X = (f['X'][:] - mean) / std
         n_reads = len(X)
-        fname = os.path.join(out_dir, '{}_{}_{}_{}_{}_{}.hdf5'.format(gene, tx, gpos, pos, kmer, n_reads))
-        with h5py.File(fname, 'w') as f:
-            assert(n_reads == len(read_ids))
-            f['X'] = X
-            f['read_ids'] = read_ids
-            f['start_idx'] = start_event_indices
-            f['end_idx'] = end_event_indices
         f.close()
+        return (torch.Tensor(X),
+                torch.LongTensor([kmer]).repeat(len(X)),
+                n_reads)
 
-    with locks['log'], open(os.path.join(out_dir, "prepare_for_inference.log"),'a') as f:
-        f.write('%s\n' %(tx))    
+                
+def custom_collate_val(batch):
+    return (torch.cat([item[0] for item in batch]),
+            torch.cat([item[1] for item in batch]),
+            assign_group_to_index_val(batch))
 
-        
-def prepare_for_inference_tx(tx, read_task, all_kmers, out_dir, locks):    
-    reads = numpy.concatenate(read_task)
-    reads = reads[numpy.isin(reads["reference_kmer"], all_kmers)] # Filter for motifs
-    reads = reads[numpy.argsort(reads["transcriptomic_position"])] # sort by reference kmer
-    positions, indices = numpy.unique(reads["transcriptomic_position"],return_index=True) # retrieve group indexing
 
-    for i in range(len(positions)):
-        pos = positions[i]
-        kmer = gt_map.loc[pos]["kmer"]
-        if len(positions) > 1:
-            start_idx = indices[i]
-            end_idx = indices[i + 1] if i < len(positions) - 1 else None
-            read = reads[start_idx:end_idx]
-            
-            # Converting to numpy array
-            
-            X = read[["norm_mean", "norm_std", "dwell_time"]]\
-                        .astype([('norm_mean', '<f8'), ('norm_std', '<f8'), ('dwell_time', '<f8')]).view('<f8')
-            read_ids = read["read_id"].view('<S36')
-            start_event_indices = read["start_idx"].view('<i8')
-            end_event_indices = read["end_idx"].view('<i8')
-        else:
-            read = reads[0]
+def assign_group_to_index_val(batch):
+    curr_idx = 0
+    idx_per_group = []
+    for i in range(len(batch)):
+        num_reads = batch[i][2]
+        idx_per_group.append(np.arange(curr_idx, curr_idx + num_reads))
+        curr_idx += num_reads
+    return np.array(idx_per_group)
 
-            # Converting to numpy array when there is only one entry
-            
-            X = numpy.array(read[["norm_mean", "norm_std", "dwell_time"]].tolist())
-            read_ids = numpy.array(read["read_id"].tolist())
-            start_event_indices = numpy.array(read["start_idx"].tolist())
-            end_event_indices = numpy.array(read["end_idx"].tolist())
-        
-        # Reshaping columns
-        X = X.reshape(-1, 3)
-        read_ids = read_ids.reshape(-1, 1)
-        start_event_indices = start_event_indices.reshape(-1, 1)
-        end_event_indices = end_event_indices.reshape(-1, 1)
 
-        # Saving output in hdf5 file format
+def extract_positions(tx_dir):
+    fnames = os.listdir(tx_dir)
+    fpaths = [os.path.join(tx_dir, fname) for fname in fnames]
+    transcripts = [x.split("_")[0] for x in fnames]
+    positions = [np.array(x.split("_"))[1] for x in fnames]
+    n_samples = [int(x.split("_")[-1].split(".hdf5")[0]) for x in fnames]
+    kmers = [x.split("_")[2] for x in fnames]
+    return pd.DataFrame({'filepath': fpaths, 'position': positions, 'transcript_id': transcripts,
+                         'n_samples': n_samples,
+                         'kmer': kmers})
 
-        n_reads = len(X)
-        fname = os.path.join(out_dir, '{}_{}_{}_{}.hdf5'.format(tx, pos, kmer, n_reads))
-        with h5py.File(fname, 'w') as f:
-            assert(n_reads == len(read_ids))
-            f['X'] = X
-            f['read_ids'] = read_ids
-            f['start_idx'] = start_event_indices
-            f['end_idx'] = end_event_indices
-        f.close()
-
-    with locks['log'], open(os.path.join(out_dir, "prepare_for_inference.log"),'a') as f:
-        f.write('%s\n' %(tx))   
-        
-        
-def parallel_prepare_for_inference(eventalign_filepath,gt_dir,eventalign_prep_dir,n_processes):
-    # Create output path and locks.
-    out_dir = os.path.join(eventalign_prep_dir, "inference")
-    
-    if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
-
-    locks = {'log': multiprocessing.Lock()}
-    log_path = os.path.join(out_dir, "prepare_for_inference.log")
-    # Create empty files for logs.
-    open(log_path,'w').close()
-
-    # Create communication queues.
-    task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
-    
-    task_func = prepare_for_inference if gt_dir is not None else prepare_for_inference_tx
-    # Create and start consumers.
-    consumers = [helper.Consumer(task_queue=task_queue,task_function=task_func,locks=locks) for i in range(n_processes)]
-    for p in consumers:
-        p.start()
-        
-    ## Load tasks into task_queue. A task is a read information from a specific site.
-
-    # Only include reads that conform to DRACH motifs
-
-    all_kmers = numpy.array(["".join(x) for x in product(['A', 'G', 'T'], ['G', 'A'], ['A'], ['C'], ['A', 'C', 'T'])], dtype='S5')
-    with h5py.File(eventalign_filepath, 'r') as f:
-        for tx in f:
-            print("Preprocessing transcript {}".format(tx))
-            read_task = []
-            for read in f[tx]:
-                read_task.append(f[tx][read]['events'][:])
-            if gt_dir is not None:
-                task_queue.put((tx,gt_dir,read_task,all_kmers,out_dir))
-            else:
-                task_queue.put((tx, read_task, all_kmers, out_dir))
-
-    # Put the stop task into task_queue.
-    task_queue = helper.end_queue(task_queue,n_processes)
-
-    # Wait for all of the tasks to finish.
-    task_queue.join()
-    
-    with open(log_path,'a+') as f:
-        f.write(helper.decor_message('successfully finished'))
-
-        
-def main():
-    args = get_args()
-    #
-    n_processes = args.n_processes        
-    out_dir = args.out_dir
-    gt_mapping_dir = args.mapping
-
-    
-    parallel_prepare_for_inference(os.path.join(out_dir, 'eventalign.hdf5'),gt_mapping_dir,out_dir,n_processes)
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser(description="a script to preprocess all files in a nanopolish event align directory")
+    parser.add_argument('-i', '--input', dest='input_dir', default=None,
+                        help="Directory containing the inference folder to predict on")
+    parser.add_argument('-o', '--output', dest='out_dir', default=None,
+                        help="Save directory for the prediction results")
+    parser.add_argument('-m', '--model', dest='model_path', default=None,
+                        help="Path to directory containing norm constant and state dictionary for torch model")
+    parser.add_argument('-d', '--device', dest='device', default='cpu',
+                        help="cpu or cuda to run the inference on")
+    parser.add_argument('-n', '--n_processors', dest='n_processors', default=None,
+                        help="number of workers for dataloader")
+    args = parser.parse_args()
+    state_dict = torch.load(os.path.join(args.model_path, "best_model.pt"))
+    norm_constant = pd.read_csv(os.path.join(args.model_path, "norm_constant.csv"))    
+    device = args.device
+    model = MultiInstanceNNEmbedding(dim_cov=3, p=8, embedding_dim=2).to(device)
+    model.load_state_dict(state_dict)
+    
+    data_dir = os.path.join(args.input_dir, "inference")
+    df = extract_positions(data_dir)
+    ds = ValDS(norm_constant, data_dir)
+    dl = DataLoader(ds, num_workers=int(args.n_processors), batch_size=150,
+                    shuffle=False, collate_fn=custom_collate_val)
+    y_preds = []
+    
+    for _, inp in enumerate(dl):
+        out = model(inp[0].to(device), inp[1].to(device), inp[2])
+        y_preds.extend(out.detach().cpu().numpy())
 
+    if not os.path.exists(args.out_dir):
+        os.makedirs(args.out_dir)
 
+    df["proba"] = np.array(y_preds)
+    df[["transcript_id", "kmer", "n_samples", "proba", "filepath"]]\
+        .to_csv(os.path.join(args.out_dir, "m6Anet_predictions.csv.gz"), index=False)
