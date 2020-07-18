@@ -113,7 +113,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         p.start()
         
     ## Load tasks into task_queue. A task is eventalign information of one read.            
-    with open(eventalign_filepath,'r') as eventalign_file, open(summary_filepath,'r') as summary_file:
+    with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
 
         reader_summary = csv.DictReader(summary_file, delimiter="\t")
         reader_eventalign = csv.DictReader(eventalign_file, delimiter="\t")
