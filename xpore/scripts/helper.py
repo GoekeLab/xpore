@@ -15,10 +15,7 @@ class EventalignFile:
 
     def _open(self):
         fn = self._fn
-        if fn == '-':
-            self._handle = sys.stdin
-            self._decode_method = str
-        elif os.path.splitext(fn)[1] == '.gz':
+        if os.path.splitext(fn)[1] == '.gz':
             self._handle = gzip.open(fn)
             self._decode_method = bytes.decode
         else:
