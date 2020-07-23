@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import os
 import h5py
+from tqdm import tqdm
 from torch.utils.data import DataLoader, Dataset
 from itertools import product
 
@@ -138,9 +139,11 @@ def main():
                     shuffle=False, collate_fn=custom_collate_val)
     y_preds = []
     
-    for _, inp in enumerate(dl):
+    for _, inp in tqdm(enumerate(dl), total=len(dl)):
         out = model(inp[0].to(device), inp[1].to(device), inp[2])
-        y_preds.extend(out.detach().cpu().numpy())
+        
+        #y_preds.extend(out.detach().cpu().numpy())
+        pass
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir)
