@@ -1,9 +1,42 @@
+import gzip
 import multiprocessing
 import numpy
 import os
 import pandas
 from functools import reduce
 from collections import defaultdict
+
+
+class EventalignFile:
+    
+    def __init__(self, fn):
+        self._fn = fn
+        self._open()
+
+    def _open(self):
+        fn = self._fn
+        if os.path.splitext(fn)[1] == '.gz':
+            self._handle = gzip.open(fn)
+            self._decode_method = bytes.decode
+        else:
+            self._handle = open(fn)
+            self._decode_method = str
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.close()
+
+    def close(self):
+        self._handle.close()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self._decode_method(next(self._handle))
+
 
 def decor_message(text,opt='simple'):
     text = text.upper()

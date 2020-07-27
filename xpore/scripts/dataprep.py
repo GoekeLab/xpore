@@ -58,7 +58,8 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
 
     eventalign_result.reset_index(inplace=True)
 
-    eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]
+    # eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]
+    eventalign_result['transcript_id'] = eventalign_result['contig']
     eventalign_result['transcriptomic_position'] = pd.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
     # eventalign_result = misc.str_encode(eventalign_result)
     eventalign_result['read_id'] = [read_name]*len(eventalign_result)
@@ -113,8 +114,8 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         p.start()
         
     ## Load tasks into task_queue. A task is eventalign information of one read.            
-    with open(eventalign_filepath,'r') as eventalign_file, open(summary_filepath,'r') as summary_file:
-
+    with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
+        
         reader_summary = csv.DictReader(summary_file, delimiter="\t")
         reader_eventalign = csv.DictReader(eventalign_file, delimiter="\t")
 
@@ -203,10 +204,13 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_max,resume):
 
     # Get all gene ids.
     gene_ids = set()
+    tx_ensembl = dict()
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
         for tx_id in f.keys():
+            tx_id,tx_version = tx_id.split('.') # Based on Ensembl
+            tx_ensembl[tx_id] = tx_version
             try:
-                g_id = ensembl.transcript_by_id(tx_id).gene_id
+                g_id = ensembl.transcript_by_id(tx_id).gene_id 
             except ValueError:
                 continue
             else:
@@ -227,8 +231,14 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_max,resume):
             data_dict = dict()
             n_reads = 0
             for tx_id in tx_ids:
+                
+                if tx_id not in tx_ensembl:
+                    continue
+                tx_id += '.' + tx_ensembl[tx_id]
+        
                 if tx_id not in f: # no eventalign for tx_id
                     continue
+                    
                 # n_reads += len(f[tx_id])                
                 for read_id in f[tx_id].keys():
                     if (n_reads < readcount_max) and (read_id not in read_ids):
@@ -294,14 +304,20 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
     for read_id,events_per_read in data_dict.items(): 
         # print(read_id)
 
-        # ===== transcript to gene coordinates ===== #
-        tx_ids = [tx_id.decode('UTF-8') for tx_id in events_per_read['transcript_id']]
+        # ===== transcript to gene coordinates ===== # TODO: to use gtf.
+        
+        tx_ids = [tx_id.decode('UTF-8').split('.')[0] for tx_id in events_per_read['transcript_id']] 
         tx_positions = events_per_read['transcriptomic_position']
         
         genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- np structured array of 'chr','gene_id','genomic_position','kmer'
         genomic_coordinate = np.array(genomic_coordinate,dtype=np.dtype([('chr','<U2'),('gene_id','<U15'),('genomic_position','<i4'),('g_kmer','<U5')]))
         # ===== 
-
+        
+        # Based on Ensembl, remove transcript version.
+        events_per_read['transcript_id'] = [tx_id.decode('UTF-8').split('.')[0] for tx_id in events_per_read['transcript_id']] 
+        events_per_read = np.array(events_per_read,dtype=np.dtype([('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
+        #
+        
         events += [events_per_read]
         genomic_coordinates += [genomic_coordinate]
         n_events_per_read = len(events_per_read)
