@@ -76,7 +76,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
 
     with locks['hdf5'], h5py.File(out_paths['hdf5'],'a') as hf:
         for tx_id,read_id in df_events_per_read.index.unique():
-            df2write = df_events_per_read.loc[[tx_id,read_id],:].reset_index() 
+            df2write = df_events_per_read.loc[[(tx_id,read_id)],:].reset_index() 
             events = np.rec.fromrecords(misc.str_encode(df2write[features]),names=features) #,dtype=features_dtype
 
             hf_tx = hf.require_group('%s/%s' %(tx_id,read_id))
