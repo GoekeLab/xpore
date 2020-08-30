@@ -241,6 +241,7 @@ class Bernoulli(object):
         prob = 1./(1.+np.exp(np.clip(ln_rho_diff, -500, 500)))  # N,1 => N
         self.params['prob'] = np.stack([prob, 1-prob], axis=-1)
         self.params['ln_prob'] = ln_rho - scipy.special.logsumexp(ln_rho, axis=-1)[..., newaxis]  # N,K
+    
 
 
 class Dirichlet(object):

@@ -80,7 +80,8 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
         
     if save_models & (len(models)>0): #todo: 
         print(out_paths['model_filepath'],idx)
-        io.save_models(models,out_paths['model_filepath'])
+        io.save_models_to_hdf5(models,out_paths['model_filepath'])
+        
     if len(models)>0:
         # Generating the result table.
         table = io.generate_result_table(models,data_info)
