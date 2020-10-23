@@ -24,6 +24,8 @@ Contents
    installation
    quickstart
    configuration
+   preparation
+   scripts
    api
 
 Contacts
