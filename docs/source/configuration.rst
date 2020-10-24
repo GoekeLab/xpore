@@ -20,10 +20,17 @@ The format of configuration file which is one of the inputs for ``xpore-diffmod`
 
     out: <DIR_PATH_FOR_OUTPUTS>
     
-    (OPTIONAL)
+    criteria:
+        readcount_min: <15>
+        readcount_max: <1000>
+        
     method:
         prefiltering:
             method: t-test
             threshold: <P_VALUE_THRESHOLD>
+        max_iters: <500>
+        stopping_criterial: <0.0001>
+        
+
 
 

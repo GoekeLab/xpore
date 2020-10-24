@@ -24,10 +24,10 @@ def get_args():
 
     # Optional arguments
     optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int,default=1)
-    optional.add_argument('--save_models', dest='save_models', help='save the models.',default=False,action='store_true') # todo
-    optional.add_argument('--resume', dest='resume', help='resume from the previous run.',default=False,action='store_true') 
+    optional.add_argument('--save_models', dest='save_models', help='with this argument, the program will save the model parameters for each id.',default=False,action='store_true') # todo
+    optional.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') 
     
-    optional.add_argument('--ids', dest='ids', help='gene ids or transcript ids.',default=[],nargs='*')
+    optional.add_argument('--ids', dest='ids', help='gene / transcript ids to model.',default=[],nargs='*')
 
     parser._action_groups.append(optional)
     return parser.parse_args()
