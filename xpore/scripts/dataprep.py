@@ -30,6 +30,7 @@ def get_args():
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     optional.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true') 
     optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int, default=1)
+    optional.add_argument('--readcount_min', dest='readcount_min', help='minimum read counts per gene.',type=int, default=1)
     optional.add_argument('--readcount_max', dest='readcount_max', help='maximum read counts per gene.',type=int, default=1000)
     optional.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') #todo
 
@@ -174,7 +175,7 @@ def t2g(gene_id,ensembl):
                 
     return tx_ids, t2g_dict
             
-def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_max,resume):
+def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -245,11 +246,11 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_max,resume):
                     
                 # n_reads += len(f[tx_id])                
                 for read_id in f[tx_id].keys():
-                    if (n_reads < readcount_max) and (read_id not in read_ids):
+                    if (n_reads > readcount_min) and (n_reads < readcount_max) and (read_id not in read_ids):
                         data_dict[read_id] = f[tx_id][read_id]['events'][:]
                         read_ids += [read_id]
                         n_reads += 1
-                    elif n_reads >= readcount_max:
+                    elif (n_reads <= readcount_min) or (n_reads >= readcount_max):
                         break
                     
             if len(read_ids) > 0:
@@ -376,7 +377,7 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
         f.write(log_str + '\n')
 
 
-def parallel_preprocess_tx(out_dir,n_processes,readcount_max,resume):
+def parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -416,7 +417,7 @@ def parallel_preprocess_tx(out_dir,n_processes,readcount_max,resume):
             n_reads = 0
             data_dict = dict()
             for read_id in f[tx_id].keys():
-                if n_reads < readcount_max:
+                if (n_reads > readcount_min) adn (n_reads < readcount_max):
                     data_dict[read_id] = f[tx_id][read_id]['events'][:]
                     read_ids += [read_id]
                     n_reads += 1
@@ -521,6 +522,7 @@ def main():
     out_dir = args.out_dir
     ensembl_version = args.ensembl
     ensembl_species = args.species
+    readcount_min = args.readcount_min    
     readcount_max = args.readcount_max
     resume = args.resume
     genome = args.genome
@@ -536,10 +538,10 @@ def main():
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
         ensembl = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping.    
-        parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_max,resume)
+        parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount_max,resume)
 
     else:
-        parallel_preprocess_tx(out_dir,n_processes,readcount_max,resume)
+        parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resume)
 
 
 if __name__ == '__main__':
@@ -548,7 +550,8 @@ if __name__ == '__main__':
         --eventalign EVENTALIGN --summary SUMMARY --out_dir OUT_DIR \
                       [--ensembl ENSEMBL] [--genome] \
                       [--n_processes N_PROCESSES] \
-                      [--readcount_max READCOUNT_MAX] [--resume] \
+                      [--readcount_min READCOUNT_MIN] [--readcount_max READCOUNT_MAX] \
+                      [--resume] \
     """
     main()
 
