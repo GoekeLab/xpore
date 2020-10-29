@@ -417,7 +417,7 @@ def parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resum
             n_reads = 0
             data_dict = dict()
             for read_id in f[tx_id].keys():
-                if (n_reads > readcount_min) adn (n_reads < readcount_max):
+                if (n_reads > readcount_min) and (n_reads < readcount_max):
                     data_dict[read_id] = f[tx_id][read_id]['events'][:]
                     read_ids += [read_id]
                     n_reads += 1
