@@ -246,14 +246,14 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount
                     
                 # n_reads += len(f[tx_id])                
                 for read_id in f[tx_id].keys():
-                    if (n_reads > readcount_min) and (n_reads < readcount_max) and (read_id not in read_ids):
+                    if (n_reads < readcount_max) and (read_id not in read_ids):
                         data_dict[read_id] = f[tx_id][read_id]['events'][:]
                         read_ids += [read_id]
                         n_reads += 1
-                    elif (n_reads <= readcount_min) or (n_reads >= readcount_max):
+                    elif n_reads >= readcount_max:
                         break
                     
-            if len(read_ids) > 0:
+            if n_reads >= readcount_min:
                 task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
                 gene_ids_processed += [gene_id]
 
@@ -417,14 +417,15 @@ def parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resum
             n_reads = 0
             data_dict = dict()
             for read_id in f[tx_id].keys():
-                if (n_reads > readcount_min) and (n_reads < readcount_max):
+                if n_reads < readcount_max:
                     data_dict[read_id] = f[tx_id][read_id]['events'][:]
                     read_ids += [read_id]
                     n_reads += 1
                 else:
                     break
-            task_queue.put((tx_id,data_dict,out_paths)) # Blocked if necessary until a free slot is available. 
-            tx_ids_processed += [tx_id]
+            if n_reads >= readcount_min:
+                task_queue.put((tx_id,data_dict,out_paths)) # Blocked if necessary until a free slot is available. 
+                tx_ids_processed += [tx_id]
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
