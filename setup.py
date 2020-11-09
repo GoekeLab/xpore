@@ -14,7 +14,7 @@ setup(
     name=__pkg_name__,
     license="MIT",
     description='xpore is a python package for Nanopore data analysis.',
-    version='v0.5.2',
+    version='v0.5.6',
     long_description=README,
     long_description_content_type='text/markdown',
     url='https://github.com/GoekeLab/xpore',
@@ -28,7 +28,7 @@ setup(
             'h5py>=2.10.0',
             'pyensembl>=1.8.5'
             ],
-    python_requires=">=3.5",
+    python_requires=">=3.8",
     entry_points={'console_scripts': ["xpore-dataprep={}.scripts.dataprep:main".format(__pkg_name__),
                                       "xpore-diffmod={}.scripts.diffmod:main".format(__pkg_name__)]},
     classifiers=[
@@ -37,8 +37,7 @@ setup(
         'Development Status :: 1 - Planning',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Software Development :: Libraries',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Intended Audience :: Science/Research',

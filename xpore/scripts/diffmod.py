@@ -24,10 +24,10 @@ def get_args():
 
     # Optional arguments
     optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int,default=1)
-    optional.add_argument('--save_models', dest='save_models', help='save the models.',default=False,action='store_true') # todo
-    optional.add_argument('--resume', dest='resume', help='resume from the previous run.',default=False,action='store_true') 
+    optional.add_argument('--save_models', dest='save_models', help='with this argument, the program will save the model parameters for each id.',default=False,action='store_true') # todo
+    optional.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') 
     
-    optional.add_argument('--ids', dest='ids', help='gene ids or transcript ids.',default=[],nargs='*')
+    optional.add_argument('--ids', dest='ids', help='gene / transcript ids to model.',default=[],nargs='*')
 
     parser._action_groups.append(optional)
     return parser.parse_args()
@@ -80,7 +80,8 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
         
     if save_models & (len(models)>0): #todo: 
         print(out_paths['model_filepath'],idx)
-        io.save_models(models,out_paths['model_filepath'])
+        io.save_models_to_hdf5(models,out_paths['model_filepath'])
+        
     if len(models)>0:
         # Generating the result table.
         table = io.generate_result_table(models,data_info)

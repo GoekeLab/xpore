@@ -96,7 +96,7 @@ def save_result_table(table, out_filepath):
     out_file.close()
 
 
-def save_models(models, model_filepath):  # per gene/transcript
+def save_models_to_hdf5(models, model_filepath):  # per gene/transcript
     """
     Save model parameters.
 
@@ -108,22 +108,23 @@ def save_models(models, model_filepath):  # per gene/transcript
         Path to save the models.
     """
     model_file = h5py.File(model_filepath, 'w')
-    for model_key, model in models.items():  
+    for model_key, model_tuple in models.items():
         idx, position, kmer = model_key
+        model, prefiltering = model_tuple
 
         position = str(position)
         if idx not in model_file:
             model_file.create_group(idx)
         model_file[idx].create_group(position)
         model_file[idx][position].attrs['kmer'] = kmer.encode('UTF-8')
-        model_file[idx][position].create_group('info')
-        for key, value in model.info.items():
-            model_file[idx][position]['info'][key] = value
+        # model_file[idx][position].create_group('info')
+        # for key, value in model.info.items():
+        #     model_file[idx][position]['info'][key] = value
 
         model_file[idx][position].create_group('nodes')  # ['x','y','z','w','mu_tau'] => store only their params
         for node_name in model.nodes:
             model_file[idx][position]['nodes'].create_group(node_name)
-            if model.nodes[node_name].data is not None: # To make it optional.
+            if model.nodes[node_name].data is not None: # Todo: make it optional.
                 value = model.nodes[node_name].data
                 if node_name in ['y_run_names','y_condition_names']:
                     value = [val.encode('UTF-8') for val in value]

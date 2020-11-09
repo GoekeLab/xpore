@@ -22,13 +22,13 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = 'xpore'
-copyright = '2019, Ploy N. Pratanwanich'
+copyright = '2020, Ploy N. Pratanwanich'
 author = 'Ploy N. Pratanwanich'
 
 # The short X.Y version
 version = ''
 # The full version, including alpha/beta/rc tags
-release = '0.5.2'
+release = '0.5.3'
 
 
 # -- General configuration ---------------------------------------------------
