@@ -47,57 +47,50 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
 
     cond_successfully_eventaligned = eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
     eventalign_result = eventalign_result[cond_successfully_eventaligned]
+    if len(eventalign_result) > 0:
+        keys = ['read_index','contig','position','reference_kmer'] # for groupby
+        eventalign_result['length'] = pandas.to_numeric(eventalign_result['end_idx'])-pandas.to_numeric(eventalign_result['start_idx'])
+        eventalign_result['sum_norm_mean'] = pandas.to_numeric(eventalign_result['event_level_mean']) * eventalign_result['length']
+        eventalign_result['sum_norm_std'] = pandas.to_numeric(eventalign_result['event_stdv']) * eventalign_result['length']
+        eventalign_result['sum_dwell_time'] = pandas.to_numeric(eventalign_result['event_length']) * eventalign_result['length']
 
-    keys = ['read_index','contig','position','reference_kmer'] # for groupby
-    eventalign_result['length'] = pandas.to_numeric(eventalign_result['end_idx'])-pandas.to_numeric(eventalign_result['start_idx'])
-    eventalign_result['sum_norm_mean'] = pandas.to_numeric(eventalign_result['event_level_mean']) * eventalign_result['length']
-    eventalign_result['sum_norm_std'] = pandas.to_numeric(eventalign_result['event_stdv']) * eventalign_result['length']
-    eventalign_result['sum_dwell_time'] = pandas.to_numeric(eventalign_result['event_length']) * eventalign_result['length']
+        eventalign_result = eventalign_result.groupby(keys)  
+        sum_norm_mean = eventalign_result['sum_norm_mean'].sum() 
+        sum_norm_std = eventalign_result["sum_norm_std"].sum()
+        sum_dwell_time = eventalign_result["sum_dwell_time"].sum()
 
-    eventalign_result = eventalign_result.groupby(keys)  
-    sum_norm_mean = eventalign_result['sum_norm_mean'].sum() 
-    sum_norm_std = eventalign_result["sum_norm_std"].sum()
-    sum_dwell_time = eventalign_result["sum_dwell_time"].sum()
+        start_idx = eventalign_result['start_idx'].min().astype('i8')
+        end_idx = eventalign_result['end_idx'].max().astype('i8')
+        total_length = eventalign_result['length'].sum()
 
-    start_idx = eventalign_result['start_idx'].min().astype('i8')
-    end_idx = eventalign_result['end_idx'].max().astype('i8')
-    total_length = eventalign_result['length'].sum()
+        eventalign_result = pandas.concat([start_idx,end_idx],axis=1)
+        eventalign_result['norm_mean'] = sum_norm_mean / total_length
+        eventalign_result["norm_std"] = sum_norm_std / total_length
+        eventalign_result["dwell_time"] = sum_dwell_time / total_length
+        eventalign_result.reset_index(inplace=True)
 
-    eventalign_result = pandas.concat([start_idx,end_idx],axis=1)
-    eventalign_result['norm_mean'] = sum_norm_mean / total_length
-    eventalign_result["norm_std"] = sum_norm_std / total_length
-    eventalign_result["dwell_time"] = sum_dwell_time / total_length
-    eventalign_result.reset_index(inplace=True)
+        eventalign_result['transcript_id'] = eventalign_result['contig'].values
+        eventalign_result['transcriptomic_position'] = pandas.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
 
-    eventalign_result['transcript_id'] = [contig for contig in eventalign_result['contig']]
-    eventalign_result['transcriptomic_position'] = pandas.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
-    # eventalign_result = misc.str_encode(eventalign_result)
-    eventalign_result['read_id'] = [read_name]*len(eventalign_result)
+        features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','norm_std','dwell_time','start_idx','end_idx']
+        df_events_per_read = eventalign_result[features]
+        
+        # write to file.
+        df_events_per_read = df_events_per_read.set_index(['transcript_id','read_id'])
 
-    features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','norm_std','dwell_time','start_idx','end_idx']
-    # features_dtype = numpy.dtype([('read_id', 'object'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'),
-    #                               ('end_idx', '<i8')])
-    # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean'] #original features that Ploy's using.
-
-    df_events_per_read = eventalign_result[features]
-    # print(df_events_per_read.head())
-    
-    # write to file.
-    df_events_per_read = df_events_per_read.set_index(['transcript_id','read_id'])
-
-    with locks['hdf5'], h5py.File(out_paths['hdf5'],'a') as hf:
-        for tx_id,read_id in df_events_per_read.index.unique():
-            df2write = df_events_per_read.loc[[tx_id,read_id],:].reset_index() 
-            events = numpy.rec.fromrecords(misc.str_encode(df2write[features]),names=features) #,dtype=features_dtype
-            
-            hf_tx = hf.require_group('%s/%s' %(tx_id,read_id))
-            if 'events' in hf_tx:
-                continue
-            else:
-                hf_tx['events'] = events
-    
-    with locks['log'], open(out_paths['log'],'a') as f:
-        f.write('%s\n' %(read_name))    
+        with locks['hdf5'], h5py.File(out_paths['hdf5'],'a') as hf:
+            for tx_id,read_id in df_events_per_read.index.unique():
+                df2write = df_events_per_read.loc[[tx_id,read_id],:].reset_index() 
+                events = numpy.rec.fromrecords(misc.str_encode(df2write[features]),names=features) #,dtype=features_dtype
+                
+                hf_tx = hf.require_group('%s/%s' %(tx_id,read_id))
+                if 'events' in hf_tx:
+                    continue
+                else:
+                    hf_tx['events'] = events
+        
+        with locks['log'], open(out_paths['log'],'a') as f:
+            f.write('%s\n' %(read_name))    
 
 
 def prepare_for_inference(tx,gt_dir,read_task,all_kmers,out_dir,locks):
