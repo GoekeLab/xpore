@@ -71,6 +71,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
 
         eventalign_result['transcript_id'] = eventalign_result['contig'].values
         eventalign_result['transcriptomic_position'] = pandas.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
+        eventalign_result['read_id'] = [read_name]*len(eventalign_result)
 
         features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','norm_std','dwell_time','start_idx','end_idx']
         df_events_per_read = eventalign_result[features]
