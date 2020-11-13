@@ -76,9 +76,8 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
 
         eventalign_result.reset_index(inplace=True)
 
-        # eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]    
-        eventalign_result['transcript_id'] = eventalign_result['contig']
-
+        eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]    #### CHANGE MADE ####
+        #eventalign_result['transcript_id'] = eventalign_result['contig']
 
         eventalign_result['transcriptomic_position'] = pd.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
         # eventalign_result = misc.str_encode(eventalign_result)
@@ -227,9 +226,10 @@ def parallel_preprocess_gene(db,out_dir,n_processes,readcount_min,readcount_max,
     tx_ensembl = dict()
     with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
         for tx_id in f.keys():
-            if type(db) == EnsemblRelease:
-                tx_id,tx_version = tx_id.split('.') # Based on Ensembl
-                tx_ensembl[tx_id] = tx_version
+           # if type(db) == EnsemblRelease: #### CHANGE MADE ####
+           #     tx_id,tx_version = tx_id.split('.') # Based on Ensembl
+           #     tx_ensembl[tx_id] = tx_version
+            tx_id = tx_id.split(".")[0] #### CHANGE MADE ####
             try:
                 g_id = db.transcript_by_id(tx_id).gene_id 
             except ValueError:
@@ -252,10 +252,10 @@ def parallel_preprocess_gene(db,out_dir,n_processes,readcount_min,readcount_max,
             data_dict = dict()
             n_reads = 0
             for tx_id in tx_ids:
-                if type(db) == EnsemblRelease:
-                    if tx_id not in tx_ensembl:
-                        continue
-                    tx_id += '.' + tx_ensembl[tx_id]
+            #    if type(db) == EnsemblRelease:   #### CHANGE MADE ####
+            #        if tx_id not in tx_ensembl:
+            #            continue
+            #        tx_id += '.' + tx_ensembl[tx_id]
         
                 if tx_id not in f: # no eventalign for tx_id
                     continue
