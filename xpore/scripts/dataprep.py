@@ -108,38 +108,23 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         p.start()
         
     ## Load tasks into task_queue. A task is eventalign information of one read.            
-    with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
-        
-        summary_file.readline()
-        
-        row_summary = summary_file.readline().split('\t')
-        read_index = row_summary[0]
-        read_name = row_summary[1]
+    with helper.EventalignFile(eventalign_filepath) as eventalign_file:
+                
         eventalign_per_read = []
-
+        contig = ''
         for row_eventalign in eventalign_file:                
             row_eventalign = row_eventalign.split('\t')
-            if row_eventalign[0] == 'contig':
-                continue
 
-            if (row_eventalign[3] == read_index):
+            if (row_eventalign[0] == contig):
                 eventalign_per_read += [row_eventalign]
             else: 
                 # Load a read info to the task queue.
                 if read_name not in read_names_done:
                     task_queue.put((read_name,eventalign_per_read,out_paths))
                 # Next read.
-                try:
-                    row_summary = summary_file.readline()
-                    row_summary.split('\t')
-                except StopIteration: # no more read.
-                    break
                 else:
-                    read_index = row_summary[0]
-                    read_name = row_summary[1]
-                    print(row_eventalign[3],read_index)
-                    assert row_eventalign[3] == read_index 
                     eventalign_per_read = [row_eventalign]
+                    contig = row_eventalign[0]
 
             
 #         reader_summary = csv.DictReader(summary_file, delimiter="\t")
