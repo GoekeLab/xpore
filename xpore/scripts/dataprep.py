@@ -111,6 +111,8 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
     with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
         
         summary_file.readline()
+        eventalign_file.readline()
+        
         row_summary = summary_file.readline().split('\t')
         read_index = row_summary[0]
         read_name = row_summary[1]
