@@ -77,8 +77,8 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
 #         # print(df_events_per_read.head())
 
 
-        with locks['combine']:
-            df_events_per_read.to_csv(out_paths['combine'], mode='a', header=False, index=False)
+#         with locks['combine']:
+#             df_events_per_read.to_csv(out_paths['combine'], mode='a', header=False, index=False)
     
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write('%s\n' %(read_name))    
