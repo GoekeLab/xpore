@@ -120,7 +120,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
                 eventalign_per_read += [row_eventalign]
             else: 
                 # Load a read info to the task queue.
-                if read_index not in read_indexes_done:
+                if read_index not in read_names_done:
                     task_queue.put((read_index,eventalign_per_read,out_paths))
                 # Next read.
                 else:
