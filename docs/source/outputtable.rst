@@ -3,9 +3,9 @@
 Output table description
 =========================
 
-=============                               ==============
+==========================================  ==============
 Column name                                 Description
-=============                               ==============
+==========================================  ==============
 id                                          transcript or gene id
 position                                    transcript or gene position
 kmer                                        5-mer where modified base sits in the middle if modified
@@ -20,3 +20,4 @@ sigma2_mod                                  inferred sigma^2 of the modified RNA
 conf_mu_unmod                               confidence level of mu_unmod compared to the unmodified reference signal
 conf_mu_mod                                 confidence level of mu_unmod compared to the unmodified reference signal
 mod_assignment                              lower if mu_mod < mu_unmod and higher if mu_mod > mu_unmod
+==========================================  ================
