@@ -110,15 +110,10 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
     ## Load tasks into task_queue. A task is eventalign information of one read.            
     with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
         
-        reader_summary = csv.DictReader(summary_file, delimiter="\t")
-        reader_eventalign = csv.DictReader(eventalign_file, delimiter="\t")
-
-        row_summary = next(reader_summary)
-        read_name = row_summary['read_name']
-        read_index = row_summary['read_index']
-        eventalign_per_read = []
-        for row_eventalign in reader_eventalign:
-            if (row_eventalign['read_index'] == read_index):
+        row_summary = next(reader_summary).split('\t')
+        for row_eventalign in eventalign_file:
+            row_eventalign = row_eventalign.split('\t')
+            if (row_eventalign[3] == read_index):
                 eventalign_per_read += [row_eventalign]
             else: 
                 # Load a read info to the task queue.
@@ -130,10 +125,36 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
                 except StopIteration: # no more read.
                     break
                 else:
-                    read_index = row_summary['read_index']
-                    read_name = row_summary['read_name']
-                    assert row_eventalign['read_index'] == read_index 
+                    read_index = row_summary[0]
+                    read_name = row_summary[1]
+                    assert row_eventalign[3] == read_index 
                     eventalign_per_read = [row_eventalign]
+
+            
+#         reader_summary = csv.DictReader(summary_file, delimiter="\t")
+#         reader_eventalign = csv.DictReader(eventalign_file, delimiter="\t")
+
+#         row_summary = next(reader_summary)
+#         read_name = row_summary['read_name']
+#         read_index = row_summary['read_index']
+#         eventalign_per_read = []
+#         for row_eventalign in reader_eventalign:
+#             if (row_eventalign['read_index'] == read_index):
+#                 eventalign_per_read += [row_eventalign]
+#             else: 
+#                 # Load a read info to the task queue.
+#                 if read_name not in read_names_done:
+#                     task_queue.put((read_name,eventalign_per_read,out_paths))
+#                 # Next read.
+#                 try:
+#                     row_summary = next(reader_summary)
+#                 except StopIteration: # no more read.
+#                     break
+#                 else:
+#                     read_index = row_summary['read_index']
+#                     read_name = row_summary['read_name']
+#                     assert row_eventalign['read_index'] == read_index 
+#                     eventalign_per_read = [row_eventalign]
     
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
