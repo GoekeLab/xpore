@@ -23,6 +23,7 @@ Contents
    
    installation
    quickstart
+   outputtable
    configuration
    preparation
    scripts
