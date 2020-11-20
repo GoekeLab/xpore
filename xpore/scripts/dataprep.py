@@ -67,28 +67,18 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
 
         eventalign_result['transcriptomic_position'] = pd.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
         # eventalign_result = misc.str_encode(eventalign_result)
-        eventalign_result['read_id'] = [read_name]*len(eventalign_result)
+#         eventalign_result['read_id'] = [read_name]*len(eventalign_result)
 
         # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx']
         # features_dtype = np.dtype([('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'), ('end_idx', '<i8')])
-        features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean']
+        features = ['transcript_id','transcriptomic_position','reference_kmer','norm_mean']
 
         df_events_per_read = eventalign_result[features]
         # print(df_events_per_read.head())
 
-        # write to file.
-        df_events_per_read = df_events_per_read.set_index(['transcript_id','read_id'])
 
-        with locks['hdf5'], h5py.File(out_paths['hdf5'],'a') as hf:
-            for tx_id,read_id in df_events_per_read.index.unique():
-                df2write = df_events_per_read.loc[[(tx_id,read_id)],:].reset_index() 
-                events = np.rec.fromrecords(misc.str_encode(df2write[features]),names=features) #,dtype=features_dtype
-
-                hf_tx = hf.require_group('%s/%s' %(tx_id,read_id))
-                if 'events' in hf_tx:
-                    continue
-                else:
-                    hf_tx['events'] = events
+        with locks['combine']:
+            df_events_per_read.to_csv(out_paths['combine'], mode='a', header=False)
     
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write('%s\n' %(read_name))    
@@ -97,7 +87,7 @@ def combine(read_name,eventalign_per_read,out_paths,locks):
 def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume):
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
-    for out_filetype in ['hdf5','log']:
+    for out_filetype in ['combine','log']:
         out_paths[out_filetype] = os.path.join(out_dir,'eventalign.%s' %out_filetype)
         locks[out_filetype] = multiprocessing.Lock()
         
@@ -107,7 +97,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         read_names_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]
     else:
         # Create empty files.
-        open(out_paths['hdf5'],'w').close()
+        open(out_paths['combine'],'w').close()
         open(out_paths['log'],'w').close()
 
     # Create communication queues.
@@ -537,12 +527,12 @@ def main():
         parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
-    if genome:
-        ensembl = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping.    
-        parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount_max,resume)
+#     if genome:
+#         ensembl = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping.    
+#         parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount_max,resume)
 
-    else:
-        parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resume)
+#     else:
+#         parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resume)
 
 
 if __name__ == '__main__':
