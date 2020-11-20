@@ -132,6 +132,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
                 else:
                     read_index = row_summary[0]
                     read_name = row_summary[1]
+                    print(read_index,row_eventalign[3])
                     assert row_eventalign[3] == read_index 
                     eventalign_per_read = [row_eventalign]
 
