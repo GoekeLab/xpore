@@ -38,51 +38,50 @@ def get_args():
     return parser.parse_args()
 
 def combine(read_name,eventalign_per_read,out_paths,locks):
-    eventalign_result = pd.DataFrame.from_records(eventalign_per_read)
+#     eventalign_result = pd.DataFrame.from_records(eventalign_per_read)
 
-    cond_successfully_eventaligned = eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
+#     cond_successfully_eventaligned = eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
     
-    if cond_successfully_eventaligned.sum() != 0:
+#     if cond_successfully_eventaligned.sum() != 0:
 
-        eventalign_result = eventalign_result[cond_successfully_eventaligned]
+#         eventalign_result = eventalign_result[cond_successfully_eventaligned]
 
-        keys = ['read_index','contig','position','reference_kmer'] # for groupby
-        eventalign_result['length'] = pd.to_numeric(eventalign_result['end_idx'])-pd.to_numeric(eventalign_result['start_idx'])
-        eventalign_result['sum_norm_mean'] = pd.to_numeric(eventalign_result['event_level_mean']) * eventalign_result['length']
+#         keys = ['read_index','contig','position','reference_kmer'] # for groupby
+#         eventalign_result['length'] = pd.to_numeric(eventalign_result['end_idx'])-pd.to_numeric(eventalign_result['start_idx'])
+#         eventalign_result['sum_norm_mean'] = pd.to_numeric(eventalign_result['event_level_mean']) * eventalign_result['length']
 
-        eventalign_result = eventalign_result.groupby(keys)  
-        sum_norm_mean = eventalign_result['sum_norm_mean'].sum() 
-        start_idx = eventalign_result['start_idx'].min()
-        end_idx = eventalign_result['end_idx'].max()
-        total_length = eventalign_result['length'].sum()
+#         eventalign_result = eventalign_result.groupby(keys)  
+#         sum_norm_mean = eventalign_result['sum_norm_mean'].sum() 
+#         start_idx = eventalign_result['start_idx'].min()
+#         end_idx = eventalign_result['end_idx'].max()
+#         total_length = eventalign_result['length'].sum()
 
-        eventalign_result = pd.concat([start_idx,end_idx],axis=1)
-        eventalign_result['norm_mean'] = sum_norm_mean/total_length
+#         eventalign_result = pd.concat([start_idx,end_idx],axis=1)
+#         eventalign_result['norm_mean'] = (sum_norm_mean/total_length).round(1)
 
-        eventalign_result.reset_index(inplace=True)
+#         eventalign_result.reset_index(inplace=True)
 
-        # eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]    
-        eventalign_result['transcript_id'] = eventalign_result['contig']
+#         # eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]    
+#         eventalign_result['transcript_id'] = eventalign_result['contig']
 
 
-        eventalign_result['transcriptomic_position'] = pd.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
-        # eventalign_result = misc.str_encode(eventalign_result)
-#         eventalign_result['read_id'] = [read_name]*len(eventalign_result)
+#         eventalign_result['transcriptomic_position'] = pd.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
+#         # eventalign_result = misc.str_encode(eventalign_result)
+# #         eventalign_result['read_id'] = [read_name]*len(eventalign_result)
 
-        # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx']
-        # features_dtype = np.dtype([('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'), ('end_idx', '<i8')])
-        features = ['transcript_id','transcriptomic_position','reference_kmer','norm_mean']
+#         # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx']
+#         # features_dtype = np.dtype([('read_id', 'S36'), ('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('start_idx', '<i8'), ('end_idx', '<i8')])
+#         features = ['transcript_id','transcriptomic_position','reference_kmer','norm_mean']
 
-        df_events_per_read = eventalign_result[features]
-        # print(df_events_per_read.head())
+#         df_events_per_read = eventalign_result[features]
+#         # print(df_events_per_read.head())
 
 
         with locks['combine']:
-            df_events_per_read.to_csv(out_paths['combine'], mode='a', header=False)
+            df_events_per_read.to_csv(out_paths['combine'], mode='a', header=False, index=False)
     
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write('%s\n' %(read_name))    
-
 
 def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume):
     # Create output paths and locks.
