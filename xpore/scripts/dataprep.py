@@ -113,6 +113,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         summary_file.readline()
         row_summary = summary_file.readline().split('\t')
         read_index = row_summary[0]
+        read_name = row_summary[1]
         for row_eventalign in eventalign_file:
             row_eventalign = row_eventalign.split('\t')
             if (row_eventalign[3] == read_index):
