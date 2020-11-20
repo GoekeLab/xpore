@@ -110,7 +110,8 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
     ## Load tasks into task_queue. A task is eventalign information of one read.            
     with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
         
-        row_summary = summary_file.readline().readline().split('\t')
+        summary_file.readline()
+        row_summary = summary_file.readline().split('\t')
         for row_eventalign in eventalign_file:
             row_eventalign = row_eventalign.split('\t')
             if (row_eventalign[3] == read_index):
