@@ -19,7 +19,7 @@ To detect differential modifications, you can follow the instructions in our :re
 Contents
 ------------------
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    
    installation
    quickstart
