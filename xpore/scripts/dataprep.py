@@ -127,6 +127,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
                     eventalign_per_read = [row_eventalign]
                     contig = row_eventalign[0]
                     read_index = row_eventalign[3]
+                    print(read_index)
 
             
 #         reader_summary = csv.DictReader(summary_file, delimiter="\t")
