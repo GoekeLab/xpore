@@ -122,12 +122,13 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
             else: 
                 # Load a read info to the task queue.
                 if read_index not in read_names_done:
+                    print(len(eventalign_per_read))
                     task_queue.put((read_index,eventalign_per_read,out_paths))
                     # Next read.
                     eventalign_per_read = [row_eventalign]
                     contig = row_eventalign[0]
                     read_index = row_eventalign[3]
-                    print(read_index)
+                    print(contig)
 
             
 #         reader_summary = csv.DictReader(summary_file, delimiter="\t")
