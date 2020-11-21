@@ -112,9 +112,10 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
                 
         eventalign_per_read = []
         eventalign_file.readline()
+        pos_start = eventalign_file.tell()
+        pos_end = pos_start
         contig = 'contig'
         read_index = 'read_index'
-        pos_start = eventalign_file.tell()
         for row_eventalign in eventalign_file:                
             row_eventalign = row_eventalign.split('\t')
             
