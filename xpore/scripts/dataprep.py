@@ -118,7 +118,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         for row_eventalign in eventalign_file:                
             row_eventalign = row_eventalign.split('\t')
             
-            if (row_eventalign[0] == contig) and (contig != 'contig'):
+            if (row_eventalign[0] == contig):
 #                 eventalign_per_read += [row_eventalign]
                 pos_end = eventalign_file.tell()
             else: 
