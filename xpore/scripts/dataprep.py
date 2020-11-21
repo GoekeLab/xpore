@@ -117,7 +117,7 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         for row_eventalign in eventalign_file:                
             row_eventalign = row_eventalign.split('\t')
             
-            if (row_eventalign[0] == contig) and (contif != 'contig'):
+            if (row_eventalign[0] == contig) and (contig != 'contig'):
                 eventalign_per_read += [row_eventalign]
             else: 
                 # Load a read info to the task queue.
