@@ -119,6 +119,10 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         # Create empty files.
         open(out_paths['combine'],'w').close()
         open(out_paths['log'],'w').close()
+        with open(out_paths['index'],'w') as f:
+            f.write('transcript_id,read_index,pos_start,pos_end\n') # header
+
+
 
     # Create communication queues.
     task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
@@ -306,27 +310,27 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
     genomic_coordinates = []
     
     # Concatenate
-    if len(data_dict) == 0:
-        return
+#     if len(data_dict) == 0:
+#         return
 
     for read_index,events_per_read in data_dict.items():
-        if len(events_per_read) > 0:
-            # ===== transcript to gene coordinates ===== # TODO: to use gtf.
-            tx_ids = [tx_id.decode('UTF-8').split('.')[0] for tx_id in events_per_read['transcript_id']] 
-            tx_positions = events_per_read['transcriptomic_position']
-            genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- np structured array of 'chr','gene_id','genomic_position','kmer'
-            genomic_coordinate = np.array(genomic_coordinate,dtype=np.dtype([('chr','<U2'),('gene_id','<U15'),('genomic_position','<i4'),('g_kmer','<U5')]))
-            # ===== 
+#         if len(events_per_read) > 0:
+        # ===== transcript to gene coordinates ===== # TODO: to use gtf.
+        tx_ids = [tx_id.decode('UTF-8').split('.')[0] for tx_id in events_per_read['transcript_id']] 
+        tx_positions = events_per_read['transcriptomic_position']
+        genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- np structured array of 'chr','gene_id','genomic_position','kmer'
+        genomic_coordinate = np.array(genomic_coordinate,dtype=np.dtype([('chr','<U2'),('gene_id','<U15'),('genomic_position','<i4'),('g_kmer','<U5')]))
+        # ===== 
 
-            # Based on Ensembl, remove transcript version.
-            events_per_read['transcript_id'] = tx_ids
-            events_per_read = np.array(events_per_read,dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
-            #
+        # Based on Ensembl, remove transcript version.
+        events_per_read['transcript_id'] = tx_ids
+        events_per_read = np.array(events_per_read,dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
+        #
 
-            events += [events_per_read]
-            genomic_coordinates += [genomic_coordinate]
-            n_events_per_read = len(events_per_read)
-        
+        events += [events_per_read]
+        genomic_coordinates += [genomic_coordinate]
+        n_events_per_read = len(events_per_read)
+
     events = np.concatenate(events)
     genomic_coordinates = np.concatenate(genomic_coordinates)
    
@@ -527,9 +531,9 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
-    if not helper.is_successful(eventalign_log_filepath):
-        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
+#     eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
+#     if not helper.is_successful(eventalign_log_filepath):
+#         parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
