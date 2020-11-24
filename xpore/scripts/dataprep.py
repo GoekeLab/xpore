@@ -247,7 +247,7 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount
             # mapping a gene <-> transcripts
             n_reads, tx_ids, t2g_mapping = t2g(gene_id,ensembl,g2t_mapping,df_eventalign_index,readcount_min)
             #
-#             print(gene_id,n_reads)
+            print(gene_id,n_reads)
             if n_reads >= readcount_min: 
                 data_dict = dict()
                 readcount = 0
