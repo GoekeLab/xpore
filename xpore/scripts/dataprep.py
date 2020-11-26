@@ -252,17 +252,14 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount
                 data_dict = dict()
                 readcount = 0
                 for tx_id in tx_ids:
-
                     for _,row in df_eventalign_index.loc[[tx_id]].iterrows():
                         read_index,pos_start,pos_end = row['read_index'],row['pos_start'],row['pos_end']
                         f_combine.seek(pos_start,0)
                         events_str = f_combine.read(pos_end-pos_start)
                         f_string = StringIO(events_str)
                         data = np.genfromtxt(f_string,delimiter=',',dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
-                        if len(data) > 0:
+                        if data.size > 1:
                             data_dict[read_index] = data
-                        else:
-                            print(data)
                         f_string.close()
                         readcount += 1 
                         if readcount > readcount_max:
@@ -320,10 +317,6 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
     for read_index,events_per_read in data_dict.items():
 #         if len(events_per_read) > 0:
         # ===== transcript to gene coordinates ===== # TODO: to use gtf.
-        try:
-            tx_ids = [tx_id.decode('UTF-8').split('.')[0] for tx_id in events_per_read['transcript_id']] 
-        except:
-            print(events_per_read)
         tx_ids = [tx_id.decode('UTF-8').split('.')[0] for tx_id in events_per_read['transcript_id']] 
         tx_positions = events_per_read['transcriptomic_position']
         genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- np structured array of 'chr','gene_id','genomic_position','kmer'
