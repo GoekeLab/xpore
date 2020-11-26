@@ -534,9 +534,9 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-#     eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
-#     if not helper.is_successful(eventalign_log_filepath):
-#         parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
+    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
+    if not helper.is_successful(eventalign_log_filepath):
+        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
