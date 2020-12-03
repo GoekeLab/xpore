@@ -189,7 +189,7 @@ def t2g(gene_id,ensembl,g2t_mapping,df_eventalign_index,readcount_min):
                 
     return n_reads, tx_ids, t2g_dict
             
-def parallel_preprocess_gene(db,out_dir,n_processes,readcount_min,readcount_max,resume):
+def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -301,7 +301,7 @@ def parallel_preprocess_gene(db,out_dir,n_processes,readcount_min,readcount_max,
         f.write('Total %d genes.\n' %len(gene_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess_gene(gene_id,data_dict,t2g_mapping,db_type,out_paths,locks):  
+def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):  
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
