@@ -31,6 +31,9 @@ class EventalignFile:
     def close(self):
         self._handle.close()
 
+    def readline(self):
+        self._handle.readline()
+
     def __iter__(self):
         return self
 
