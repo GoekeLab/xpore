@@ -7,6 +7,7 @@ import h5py
 import csv
 import json
 from pyensembl import EnsemblRelease
+from pyensembl import Genome
 from operator import itemgetter
 from collections import defaultdict
 from io import StringIO
@@ -25,9 +26,23 @@ def get_args():
     required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
     required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
     
+    
+
+
     # Optional
-    required.add_argument('--ensembl', dest='ensembl', help='ensembl version for gene-transcript mapping.',type=int, default=91)
-    required.add_argument('--species', dest='species', help='species for ensembl gene-transcript mapping.', default='homo_sapiens')
+    # Use ensembl db
+    optional.add_argument('--ensembl', dest='ensembl', help='ensembl version for gene-transcript mapping.',type=int, default=91)
+    optional.add_argument('--species', dest='species', help='species for ensembl gene-transcript mapping.', default='homo_sapiens')
+
+    # Use customised db
+    # These arguments will be passed to Genome from pyensembl
+    optional.add_argument('--customised_genome', dest='customised_genome', help='customised_genome.',default=False,action='store_true')
+    optional.add_argument('--reference_name', dest='reference_name', help='reference_name.',type=str)
+    optional.add_argument('--annotation_name', dest='annotation_name', help='annotation_name.',type=str)
+    optional.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf_path_or_url.',type=str)
+    optional.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript_fasta_paths_or_urls.',type=str)
+
+
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     optional.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true') 
     optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int, default=1)
@@ -62,8 +77,9 @@ def combine(eventalign_result,out_paths,locks):
 
         eventalign_result.reset_index(inplace=True)
 
-        # eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]    
-        eventalign_result['transcript_id'] = eventalign_result['contig']
+
+        eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]    #### CHANGE MADE ####
+        #eventalign_result['transcript_id'] = eventalign_result['contig']
 
         eventalign_result['transcriptomic_position'] = pd.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
         # eventalign_result = misc.str_encode(eventalign_result)
@@ -169,10 +185,11 @@ def t2g(gene_id,ensembl,g2t_mapping,df_eventalign_index,readcount_min):
                         kmer = tx_seq[tx_pos-2:tx_pos+3]
                     t2g_dict[(tx.id,tx_pos)] = (tx.contig,gene_id,g_pos,kmer) # tx.contig is chromosome.
             tx_ids += [tx.id]
+
                 
     return n_reads, tx_ids, t2g_dict
             
-def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount_max,resume):
+def parallel_preprocess_gene(db,out_dir,n_processes,readcount_min,readcount_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -206,6 +223,7 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount
 
     # Get all gene ids and create a dict of eventalign.combine index.
     gene_ids = set()
+
     
     df_eventalign_index = pd.read_csv(os.path.join(out_dir,'eventalign.index'))
     df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
@@ -245,6 +263,7 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount
             if resume and (gene_id in gene_ids_done):
                 continue
             # mapping a gene <-> transcripts
+
             n_reads, tx_ids, t2g_mapping = t2g(gene_id,ensembl,g2t_mapping,df_eventalign_index,readcount_min)
             #
             print(gene_id,n_reads)
@@ -282,7 +301,7 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount
         f.write('Total %d genes.\n' %len(gene_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):  
+def preprocess_gene(gene_id,data_dict,t2g_mapping,db_type,out_paths,locks):  
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
@@ -294,6 +313,8 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
             Events for each read.
         t2g_mapping: {(,):()}
             A dict to map transcriptomic coordinates (transcript id and transcriptomic position) to genomic (gene id and genomic position).
+        db_type: 
+            Type of gene-tx mapping either EnsemblRelease or (customised) Genome 
         features: [str] # todo
             A list of features to collect from the reads that are aligned to each genomic coordinate in the output.
     Returns
@@ -314,18 +335,22 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
 #     if len(data_dict) == 0:
 #         return
 
+
     for read_index,events_per_read in data_dict.items():
 #         if len(events_per_read) > 0:
         # ===== transcript to gene coordinates ===== # TODO: to use gtf.
         tx_ids = [tx_id.decode('UTF-8').split('.')[0] for tx_id in events_per_read['transcript_id']] 
+
         tx_positions = events_per_read['transcriptomic_position']
         genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- np structured array of 'chr','gene_id','genomic_position','kmer'
         genomic_coordinate = np.array(genomic_coordinate,dtype=np.dtype([('chr','<U2'),('gene_id','<U15'),('genomic_position','<i4'),('g_kmer','<U5')]))
         # ===== 
 
         # Based on Ensembl, remove transcript version.
+
         events_per_read['transcript_id'] = tx_ids
         events_per_read = np.array(events_per_read,dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
+
         #
 
         events += [events_per_read]
@@ -530,7 +555,19 @@ def main():
     resume = args.resume
     genome = args.genome
 
-
+    customised_genome = args.customised_genome
+    if customised_genome and (None in [args.reference_name,args.annotation_name,args.gtf_path_or_url,args.transcript_fasta_paths_or_urls]):
+        print('If you have your own customised genome not in Ensembl, please provide the following')
+        print('- reference_name')
+        print('- annotation_name')
+        print('- gtf_path_or_url')
+        print('- transcript_fasta_paths_or_urls')
+    else:
+        reference_name = args.reference_name
+        annotation_name = args.annotation_name
+        gtf_path_or_url = args.gtf_path_or_url
+        transcript_fasta_paths_or_urls = args.transcript_fasta_paths_or_urls
+        
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
@@ -540,22 +577,24 @@ def main():
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
-        ensembl = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping.    
-        parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount_max,resume)
+        if customised_genome:
+            db = Genome(
+                reference_name=reference_name,
+                annotation_name=annotation_name,
+                gtf_path_or_url=gtf_path_or_url,
+                transcript_fasta_paths_or_urls=transcript_fasta_paths_or_urls
+            )
+            # parse GTF and construct database of genomic features
+            db.index()
+        else:
+            db = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping.    
+        parallel_preprocess_gene(db,out_dir,n_processes,readcount_min,readcount_max,resume)
 
     else:
         parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resume)
 
 
 if __name__ == '__main__':
-    """
-    Usage:
-        --eventalign EVENTALIGN --summary SUMMARY --out_dir OUT_DIR \
-                      [--ensembl ENSEMBL] [--genome] \
-                      [--n_processes N_PROCESSES] \
-                      [--readcount_min READCOUNT_MIN] [--readcount_max READCOUNT_MAX] \
-                      [--resume] \
-    """
     main()
 
 
