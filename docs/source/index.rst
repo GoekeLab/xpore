@@ -27,7 +27,6 @@ Contents
    configuration
    preparation
    scripts
-   api
 
 Contacts
 --------

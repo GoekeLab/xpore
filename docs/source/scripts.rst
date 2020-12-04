@@ -5,14 +5,14 @@ Scripts
 
 We provide 2 main scripts to run the analysis of differential RNA modifications as the following.
 
-1. ``xpore-dataprep``
+``xpore-dataprep``
+********************
 
-Input
-******
+* Input
+
 Output files from `nanopolish eventalgin`. Please refer to :ref:`Data preparation <preparation>` for the full Nanopolish command.
 
-Usage example
-***************
+* Usage example
 
 ======================  ==========  ===================  ============================================================================================================
 Argument name(s)         Required    Default value         Description
@@ -28,8 +28,7 @@ Argument name(s)         Required    Default value         Description
 --resume                 No          False                 With this argument, the program will resume from the previous run.
 ======================  ==========  ===================  ============================================================================================================
 
-Output
-********
+* Output
 
 ======================  ==============  ===============================================================================================================================================================
 File name               File type       Description
@@ -42,14 +41,14 @@ File name               File type       Description
 `data.log`              txt             Gene ids being processed.
 ======================  ==============  ===============================================================================================================================================================
 
-2. ``xpore-diffmod``
+``xpore-diffmod``
+******************
 
-Input
-********
+* Input
+
 Output files from `xpore-dataprep`.
 
-Usage example
-****************
+* Usage example
 
 ===================  ==========  ===============      ==============================================================================
 Argument name(s)      Required    Default value       Description
@@ -61,8 +60,7 @@ Argument name(s)      Required    Default value       Description
 --ids=LIST              No          []                Gene / Transcript ids to model.
 ===================  ==========  ===============      ==============================================================================
 
-Output
-*******
+* Output
 
 ======================  ===============     =================================================================================================================================================
 File name                File type           Description
