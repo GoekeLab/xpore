@@ -65,7 +65,7 @@ Argument name(s)      Required    Default value       Description
 ======================  ===============     =================================================================================================================================================
 File name                File type           Description
 ======================  ===============     =================================================================================================================================================
-`diffmod.table`          csv                 Output table information of differential modification rates. Please refer to `Output table description <outputtable>` for the full description.   
+`diffmod.table`          csv                 Output table information of differential modification rates. Please refer to :ref:`Output table description <outputtable>` for the full description.   
 `diffmod.log`            txt                 Gene/Transcript ids being processed.
 ======================  ===============     =================================================================================================================================================
    
