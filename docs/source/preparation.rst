@@ -19,6 +19,7 @@ Data preparation from raw reads
     nanopolish eventalign --reads <PATH/TO/FASTQ_FILE> \
     --bam <PATH/TO/BAM_FILE> \
     --genome <PATH/TO/FASTA_FILE \
+    --signal-index \
     --scale-events \
     --summary <PATH/TO/summary.txt> \
     --threads 32 > <PATH/TO/eventalign.txt>
