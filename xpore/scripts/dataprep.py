@@ -107,18 +107,34 @@ def combine(eventalign_result,out_paths,locks):
         df_events = eventalign_result[features].set_index(['contig','read_index'])
         
 #         print(df_events.head())
-
+        dict={}
         with locks['combine'],locks['index'], open(out_paths['combine'],'a') as f_combine,open(out_paths['index'],'a') as f_index:
             for index in set(df_events.index):
 #                 print(index)
                 transcript_id,read_index = index
                 pos_start = f_combine.tell()
                 df_events.loc[index].to_csv(f_combine, mode='a', header=False, index=False)
+                dict=make_json(df_events.loc[index],dict)
                 pos_end = f_combine.tell()
                 f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
-
+        print(dict)
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(''.join([str(i)+'\n' for i in set(eventalign_result['read_index'])]))    
+
+def make_json(dat,dict):
+    for vals in dat.values:
+     tx_id, tx_pos, kmer, norm_mean = vals
+     if tx_id not in dict:
+      dict[tx_id]={tx_pos:{kmer:[norm_mean]}}
+     else:
+      if tx_pos not in dict[tx_id]:
+       dict[tx_id][tx_pos]={kmer:[norm_mean]}
+      else:
+       if kmer not in dict[tx_id][tx_pos]:
+        dict[tx_id][tx_pos][kmer]=[norm_mean]
+       else:
+        dict[tx_id][tx_pos][kmer].append(norm_mean)
+    return(dict)
 
 def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume):
     # Create output paths and locks.
