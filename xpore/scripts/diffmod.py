@@ -3,7 +3,7 @@ import numpy as np
 import pandas
 import os
 import multiprocessing 
-import json
+import ujson
 from collections import defaultdict
 import csv
 
@@ -187,7 +187,7 @@ def main():
                     json_str = f_data[run_name].read(pos_end-pos_start)
                     # print(json_str[:50])
                     # json_str = '{%s}' %json_str # used for old dataprep
-                    data_dict[(condition_name,run_name)] = json.loads(json_str) # A data dict for each gene.
+                    data_dict[(condition_name,run_name)] = ujson.loads(json_str) # A data dict for each gene.
                 
         # tmp
         out_paths['model_filepath'] = os.path.join(paths['models'],'%s.hdf5' %idx)

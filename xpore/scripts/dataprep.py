@@ -5,7 +5,7 @@ import os
 import multiprocessing 
 import h5py
 import csv
-import json
+import ujson
 from pyensembl import EnsemblRelease
 from pyensembl import Genome
 from operator import itemgetter
@@ -107,17 +107,17 @@ def combine(eventalign_result,out_paths,locks):
         df_events = eventalign_result[features].set_index(['contig','read_index'])
         
 #         print(df_events.head())
-        dict={}
+###        dict={}
         with locks['combine'],locks['index'], open(out_paths['combine'],'a') as f_combine,open(out_paths['index'],'a') as f_index:
             for index in set(df_events.index):
 #                 print(index)
                 transcript_id,read_index = index
                 pos_start = f_combine.tell()
                 df_events.loc[index].to_csv(f_combine, mode='a', header=False, index=False)
-                dict=make_json(df_events.loc[index],dict)
+###                dict=make_json(df_events.loc[index],dict)
                 pos_end = f_combine.tell()
                 f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
-        print(dict)
+###        print(dict)
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(''.join([str(i)+'\n' for i in set(eventalign_result['read_index'])]))    
 
@@ -405,7 +405,7 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
         pos_start = f.tell()
         f.write('{')
         f.write('"%s":' %gene_id)
-        json.dump(data, f)
+        ujson.dump(data, f)
         f.write('}\n')
         pos_end = f.tell()
 
@@ -542,7 +542,7 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo
         pos_start = f.tell()
         f.write('{')
         f.write('"%s":' %tx_id)
-        json.dump(data, f)
+        ujson.dump(data, f)
         f.write('}\n')
         pos_end = f.tell()
         

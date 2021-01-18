@@ -26,7 +26,8 @@ setup(
             'scipy>=1.4.1',
             'PyYAML',
             'h5py>=2.10.0',
-            'pyensembl>=1.8.5'
+            'pyensembl>=1.8.5',
+            'ujson>=4.0.1'
             ],
     python_requires=">=3.8",
     entry_points={'console_scripts': ["xpore-dataprep={}.scripts.dataprep:main".format(__pkg_name__),
