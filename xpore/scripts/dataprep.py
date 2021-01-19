@@ -55,7 +55,7 @@ def get_args():
 
 def combine(eventalign_result,out_paths,locks):
 #     eventalign_result = pd.DataFrame.from_records(eventalign_per_read)
-
+    ### Need to figure out a way of adding the ensembl argument without changing the Consumer class at helper.py   
     cond_successfully_eventaligned = eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
     
     if cond_successfully_eventaligned.sum() != 0:
@@ -107,34 +107,48 @@ def combine(eventalign_result,out_paths,locks):
         df_events = eventalign_result[features].set_index(['contig','read_index'])
         
 #         print(df_events.head())
-###        dict={}
+###        dict={} ###testing
         with locks['combine'],locks['index'], open(out_paths['combine'],'a') as f_combine,open(out_paths['index'],'a') as f_index:
             for index in set(df_events.index):
 #                 print(index)
                 transcript_id,read_index = index
                 pos_start = f_combine.tell()
                 df_events.loc[index].to_csv(f_combine, mode='a', header=False, index=False)
-###                dict=make_json(df_events.loc[index],dict)
+###                dict=make_json(ensembl,df_events.loc[index],dict) ###testing
                 pos_end = f_combine.tell()
                 f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
-###        print(dict)
+###        if ensembl != None:   ###testing###
+###            data_json=open("test_data.json","w") ###testing###
+###            ujson.dump(dict,data_json)  ###testing###
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(''.join([str(i)+'\n' for i in set(eventalign_result['read_index'])]))    
 
-def make_json(dat,dict):
-    for vals in dat.values:
-     tx_id, tx_pos, kmer, norm_mean = vals
-     if tx_id not in dict:
-      dict[tx_id]={tx_pos:{kmer:[norm_mean]}}
-     else:
-      if tx_pos not in dict[tx_id]:
-       dict[tx_id][tx_pos]={kmer:[norm_mean]}
-      else:
-       if kmer not in dict[tx_id][tx_pos]:
-        dict[tx_id][tx_pos][kmer]=[norm_mean]
-       else:
-        dict[tx_id][tx_pos][kmer].append(norm_mean)
-    return(dict)
+#########################testing######################################
+#this function attemps to generate the dictionary from data.json w/o generating
+# the eventalign.* intermediate files
+#this maps the tx_id to gene_id; to do: replace the tx_pos with genomic coordinates
+def make_json(ensembl,dat,dict):
+    if ensembl != None:
+        for vals in dat.values:
+            tx_id, tx_pos, kmer, norm_mean = vals
+            g_id,g_pos='',''
+            try:
+                g_id = ensembl.transcript_by_id(tx_id).gene_id
+            except ValueError:
+                continue
+            if g_id != '':
+                if g_id not in dict:
+                    dict[g_id]={tx_pos:{kmer:[norm_mean]}}
+                else:
+                    if tx_pos not in dict[g_id]:
+                        dict[g_id][tx_pos]={kmer:[norm_mean]}
+                    else:
+                        if kmer not in dict[g_id][tx_pos]:
+                            dict[g_id][tx_pos][kmer]=[norm_mean]
+                        else:
+                            dict[g_id][tx_pos][kmer].append(norm_mean)
+    return dict
+#######################################################################
 
 def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume):
     # Create output paths and locks.
@@ -585,13 +599,7 @@ def main():
         transcript_fasta_paths_or_urls = args.transcript_fasta_paths_or_urls
         
     misc.makedirs(out_dir) #todo: check every level.
-    
-    # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
-    if not helper.is_successful(eventalign_log_filepath):
-        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
-    
-    # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
+    # (0) Create a ensembl data base
     if genome:
         if customised_genome:
             db = Genome(
@@ -603,9 +611,17 @@ def main():
             # parse GTF and construct database of genomic features
             db.index()
         else:
-            db = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping.    
-        parallel_preprocess_gene(db,out_dir,n_processes,readcount_min,readcount_max,resume)
+            db = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping. 
+    
+    # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
+    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
+    if not helper.is_successful(eventalign_log_filepath):
+        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
+###        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume,db) ###testing
 
+    # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
+    if genome:  
+        parallel_preprocess_gene(db,out_dir,n_processes,readcount_min,readcount_max,resume)
     else:
         parallel_preprocess_tx(out_dir,n_processes,readcount_min,readcount_max,resume)
 
