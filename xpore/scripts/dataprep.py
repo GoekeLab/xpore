@@ -1,7 +1,7 @@
 import argparse
 import numpy as np
 import pandas as pd
-import os
+import os,re
 import multiprocessing 
 import h5py
 import csv
@@ -55,7 +55,6 @@ def get_args():
 
 def combine(eventalign_result,out_paths,locks):
 #     eventalign_result = pd.DataFrame.from_records(eventalign_per_read)
-    ### Need to figure out a way of adding the ensembl argument without changing the Consumer class at helper.py   
     cond_successfully_eventaligned = eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
     
     if cond_successfully_eventaligned.sum() != 0:
@@ -107,53 +106,29 @@ def combine(eventalign_result,out_paths,locks):
         df_events = eventalign_result[features].set_index(['contig','read_index'])
         
 #         print(df_events.head())
-###        dict={} ###testing
-        with locks['combine'],locks['index'], open(out_paths['combine'],'a') as f_combine,open(out_paths['index'],'a') as f_index:
+#        pos_start,pos_end=0,0
+###        with locks['combine'],locks['index'],locks['need'], open(out_paths['combine'],'a') as f_combine,open(out_paths['index'],'a') as f_index, open(out_paths['need'],'a') as f_need:
+        with locks['need'], open(out_paths['need'],'a') as f_need:
             for index in set(df_events.index):
-#                 print(index)
+                lis=""
                 transcript_id,read_index = index
-                pos_start = f_combine.tell()
-                df_events.loc[index].to_csv(f_combine, mode='a', header=False, index=False)
-###                dict=make_json(ensembl,df_events.loc[index],dict) ###testing
-                pos_end = f_combine.tell()
-                f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
-###        if ensembl != None:   ###testing###
-###            data_json=open("test_data.json","w") ###testing###
-###            ujson.dump(dict,data_json)  ###testing###
+###                df_events.loc[index].to_csv(f_combine, mode='a', header=False, index=False)
+                estr=df_events.loc[index].to_string(header=False,index=False)
+                for entry in estr.split("\n"):
+                    entry=entry.strip().split()
+###                    pos_end+=len(",".join(entry)+"\n")
+                    lis+=";"+"_".join(entry[1:])
+###                f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
+                f_need.write('%s,%d,%s\n' %(transcript_id,read_index,lis))
+###                pos_start = pos_end
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(''.join([str(i)+'\n' for i in set(eventalign_result['read_index'])]))    
-
-#########################testing######################################
-#this function attemps to generate the dictionary from data.json w/o generating
-# the eventalign.* intermediate files
-#this maps the tx_id to gene_id; to do: replace the tx_pos with genomic coordinates
-def make_json(ensembl,dat,dict):
-    if ensembl != None:
-        for vals in dat.values:
-            tx_id, tx_pos, kmer, norm_mean = vals
-            g_id,g_pos='',''
-            try:
-                g_id = ensembl.transcript_by_id(tx_id).gene_id
-            except ValueError:
-                continue
-            if g_id != '':
-                if g_id not in dict:
-                    dict[g_id]={tx_pos:{kmer:[norm_mean]}}
-                else:
-                    if tx_pos not in dict[g_id]:
-                        dict[g_id][tx_pos]={kmer:[norm_mean]}
-                    else:
-                        if kmer not in dict[g_id][tx_pos]:
-                            dict[g_id][tx_pos][kmer]=[norm_mean]
-                        else:
-                            dict[g_id][tx_pos][kmer].append(norm_mean)
-    return dict
-#######################################################################
 
 def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume):
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
-    for out_filetype in ['combine','log','index']:
+###    for out_filetype in ['combine','log','index']:
+    for out_filetype in ['need','log']:
         out_paths[out_filetype] = os.path.join(out_dir,'eventalign.%s' %out_filetype)
         locks[out_filetype] = multiprocessing.Lock()
         
@@ -163,11 +138,12 @@ def parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,re
         read_names_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]
     else:
         # Create empty files.
-        open(out_paths['combine'],'w').close()
+###        open(out_paths['combine'],'w').close()
         open(out_paths['log'],'w').close()
-        with open(out_paths['index'],'w') as f:
-            f.write('transcript_id,read_index,pos_start,pos_end\n') # header
-
+###         with open(out_paths['index'],'w') as f:
+###             f.write('transcript_id,read_index,pos_start,pos_end\n') # header
+        with open(out_paths['need'],'w') as f:
+            f.write('transcript_id,read_index,events_str\n')
 
 
     # Create communication queues.
@@ -201,6 +177,7 @@ def t2g(gene_id,ensembl,g2t_mapping,df_eventalign_index,readcount_min):
     t2g_dict = {}
     transcripts = [tx for tx in ensembl.gene_by_id(gene_id).transcripts if tx.id in g2t_mapping[gene_id]]
     n_reads = sum([len(df_eventalign_index.loc[tx.id]) for tx in transcripts])
+    n_reads += 1 ###the new method has n_reads off by 1
     if n_reads >= readcount_min:
         for tx in transcripts:
             tx_seq = ensembl.transcript_sequence(tx.id)
@@ -255,12 +232,18 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount
     gene_ids = set()
 
     
-    df_eventalign_index = pd.read_csv(os.path.join(out_dir,'eventalign.index'))
-    df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
-    df_eventalign_index.set_index('transcript_id',inplace=True)
+###     df_eventalign_index = pd.read_csv(os.path.join(out_dir,'eventalign.index'))
+###     df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
+###     df_eventalign_index.set_index('transcript_id',inplace=True)
+###    g2t_mapping = defaultdict(list)
+
+    ### testing
+    df_eventalign_need = pd.read_csv(os.path.join(out_dir,'eventalign.need'))
+    df_eventalign_need['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_need['transcript_id']]
+    df_eventalign_need.set_index('transcript_id',inplace=True)
     g2t_mapping = defaultdict(list)
 
-    for tx_id in set(df_eventalign_index.index):
+    for tx_id in set(df_eventalign_need.index):
         try:
             g_id = ensembl.transcript_by_id(tx_id).gene_id 
         except ValueError:
@@ -286,39 +269,71 @@ def parallel_preprocess_gene(ensembl,out_dir,n_processes,readcount_min,readcount
 
     # Load tasks into task_queue.    
     gene_ids_processed = []
-     
-    with open(os.path.join(out_dir,'eventalign.combine'),'r') as f_combine:
 
-        for gene_id in g2t_mapping:
-            if resume and (gene_id in gene_ids_done):
-                continue
-            # mapping a gene <-> transcripts
+###     with open(os.path.join(out_dir,'eventalign.combine'),'r') as f_combine:
 
-            n_reads, tx_ids, t2g_mapping = t2g(gene_id,ensembl,g2t_mapping,df_eventalign_index,readcount_min)
-            #
-            print(gene_id,n_reads)
-            if n_reads >= readcount_min: 
-                data_dict = dict()
-                readcount = 0
-                for tx_id in tx_ids:
-                    for _,row in df_eventalign_index.loc[[tx_id]].iterrows():
-                        read_index,pos_start,pos_end = row['read_index'],row['pos_start'],row['pos_end']
-                        f_combine.seek(pos_start,0)
-                        events_str = f_combine.read(pos_end-pos_start)
-                        f_string = StringIO(events_str)
-                        data = np.genfromtxt(f_string,delimiter=',',dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
-                        if data.size > 1:
-                            data_dict[read_index] = data
-                        f_string.close()
-                        readcount += 1 
-                        if readcount > readcount_max:
-                            break
+    for gene_id in g2t_mapping:
+        if resume and (gene_id in gene_ids_done):
+            continue
+        # mapping a gene <-> transcripts
 
+        n_reads, tx_ids, t2g_mapping = t2g(gene_id,ensembl,g2t_mapping,df_eventalign_need,readcount_min)
+        #
+        print(gene_id,n_reads)
+        if n_reads >= readcount_min: 
+            data_dict = dict()
+            readcount = 0
+            for tx_id in tx_ids:
+                for _,row in df_eventalign_need.loc[[tx_id]].iterrows():
+                    read_index,events_str = row['read_index'],row['events_str']
+                    events_str = re.sub(r";","\n"+tx_id+"_",events_str).strip("\n")
+                    f_string = StringIO(events_str)
+                    data = np.genfromtxt(f_string,delimiter='_',dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
+                    if data.size > 1:
+                        data_dict[read_index] = data
+                    f_string.close()
+                    readcount += 1 
                     if readcount > readcount_max:
                         break
-                if len(data_dict)>=readcount_min:
-                    task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
-                    gene_ids_processed += [gene_id]
+                if readcount > readcount_max:
+                        break
+            if len(data_dict)>=readcount_min:
+                task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
+                gene_ids_processed += [gene_id]
+
+
+#    with open(os.path.join(out_dir,'eventalign.combine'),'r') as f_combine:
+#
+#        for gene_id in g2t_mapping:
+#            if resume and (gene_id in gene_ids_done):
+#                continue
+#            # mapping a gene <-> transcripts
+#
+#            n_reads, tx_ids, t2g_mapping = t2g(gene_id,ensembl,g2t_mapping,df_eventalign_index,readcount_min)
+#            #
+#            print(gene_id,n_reads)
+#            if n_reads >= readcount_min: 
+#                data_dict = dict()
+#                readcount = 0
+#                for tx_id in tx_ids:
+#                    for _,row in df_eventalign_index.loc[[tx_id]].iterrows():
+#                        read_index,pos_start,pos_end = row['read_index'],row['pos_start'],row['pos_end']
+#                        f_combine.seek(pos_start,0)
+#                        events_str = f_combine.read(pos_end-pos_start)
+#                        f_string = StringIO(events_str)
+#                        data = np.genfromtxt(f_string,delimiter=',',dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
+#                        if data.size > 1:
+#                            data_dict[read_index] = data
+#                        f_string.close()
+#                        readcount += 1 
+#                        if readcount > readcount_max:
+#                            break
+#
+#                    if readcount > readcount_max:
+#                        break
+#                if len(data_dict)>=readcount_min:
+#                    task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
+#                    gene_ids_processed += [gene_id]
 
 
     # Put the stop task into task_queue.
@@ -617,7 +632,6 @@ def main():
     eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
     if not helper.is_successful(eventalign_log_filepath):
         parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
-###        parallel_combine(eventalign_filepath,summary_filepath,out_dir,n_processes,resume,db) ###testing
 
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:  
