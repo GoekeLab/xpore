@@ -53,9 +53,8 @@ def get_args():
     parser._action_groups.append(optional)
     return parser.parse_args()
 
-def index(eventalign_result,out_paths,locks):
+def index(eventalign_result,pos_start,out_paths,locks):
    eventalign_result = eventalign_result.set_index(['contig','read_index'])
-   pos_start=172 # the length of nanopolish eventalign.txt header
    pos_end=pos_start
    with locks['index'], open(out_paths['index'],'a') as f_index:
        for index in list(dict.fromkeys(eventalign_result.index)):
@@ -101,13 +100,14 @@ def parallel_index(eventalign_filepath,summary_filepath,out_dir,n_processes,resu
 ##        task_queue.put((pd.concat([chunk_split,chunk_complete]),out_paths))
 
     eventalign_file = open(eventalign_filepath,'r')
-    eventalign_file.readline() #remove header
+    pos_start = len(eventalign_file.readline()) #remove header
     for chunk in pd.read_csv(eventalign_filepath, chunksize=1000000,sep='\t'):
           lines=[len(eventalign_file.readline()) for i in range(1000000)] #read the file at where it left off because the file is opened once
           lines=[line for line in lines if line > 0] #clean up the lengths of the empty lines
           chunk['line_length'] = np.array(lines)
           index_features=['contig','read_index','line_length']
-          task_queue.put((chunk[index_features],out_paths))
+          task_queue.put((chunk[index_features],pos_start,out_paths))
+          pos_start += sum(lines)
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
