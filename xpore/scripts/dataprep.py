@@ -54,18 +54,13 @@ def get_args():
     return parser.parse_args()
 
 def index(eventalign_result,out_paths,locks):
-   eventalign_result['segment'] = eventalign_result['contig']
-   eventalign_result['index'] = eventalign_result['read_index']
-   eventalign_result = eventalign_result.set_index(['segment','index'])
-   pos_start=len("\t".join(eventalign_result.columns.tolist())+"\n")
+   eventalign_result = eventalign_result.set_index(['contig','read_index'])
+   pos_start=172 # the length of nanopolish eventalign.txt header
    pos_end=pos_start
    with locks['index'], open(out_paths['index'],'a') as f_index:
        for index in list(dict.fromkeys(eventalign_result.index)):
            transcript_id,read_index = index
-           events_str=eventalign_result.loc[index].to_string(header=False,index=False)
-           for entry in events_str.split("\n"):
-               entry=entry.strip().split()
-               pos_end+=len("\t".join(entry)+"\n")
+           pos_end += eventalign_result.loc[index]['line_length'].sum()
            f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
            pos_start = pos_end
 #   with locks['log'], open(out_paths['log'],'a') as f:
@@ -98,14 +93,21 @@ def parallel_index(eventalign_filepath,summary_filepath,out_dir,n_processes,resu
         p.start()
         
     ## Load tasks into task_queue. A task is eventalign information of one read.            
-#    result = None
-#    chunk_split = None
-#    for chunk in pd.read_csv(eventalign_filepath, chunksize=1000000,sep='\t'):
-#        chunk_complete = chunk[chunk['read_index'] != chunk.iloc[-1]['read_index']]
-#        chunk_split = chunk[chunk['read_index'] == chunk.iloc[-1]['read_index']]
-    
-#        task_queue.put((pd.concat([chunk_split,chunk_complete]),out_paths))
-    task_queue.put((pd.read_table(eventalign_filepath),out_paths))
+    result = None
+    chunk_split = None
+##    for chunk in pd.read_csv(eventalign_filepath, chunksize=1000000,sep='\t'):
+##        chunk_complete = chunk[chunk['read_index'] != chunk.iloc[-1]['read_index']]
+##        chunk_split = chunk[chunk['read_index'] == chunk.iloc[-1]['read_index']]
+##        task_queue.put((pd.concat([chunk_split,chunk_complete]),out_paths))
+
+    eventalign_file = open(eventalign_filepath,'r')
+    eventalign_file.readline() #remove header
+    for chunk in pd.read_csv(eventalign_filepath, chunksize=1000000,sep='\t'):
+          lines=[len(eventalign_file.readline()) for i in range(1000000)] #read the file at where it left off because the file is opened once
+          lines=[line for line in lines if line > 0] #clean up the lengths of the empty lines
+          chunk['line_length'] = np.array(lines)
+          index_features=['contig','read_index','line_length']
+          task_queue.put((chunk[index_features],out_paths))
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
