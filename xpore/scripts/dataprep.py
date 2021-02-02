@@ -46,6 +46,7 @@ def get_args():
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     optional.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true') 
     optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int, default=1)
+    optional.add_argument('--chunk_size', dest='chunk_size', help='number of lines from nanopolish eventalign.txt for processing.',type=int, default=1000000)
     optional.add_argument('--readcount_min', dest='readcount_min', help='minimum read counts per gene.',type=int, default=1)
     optional.add_argument('--readcount_max', dest='readcount_max', help='maximum read counts per gene.',type=int, default=1000)
     optional.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') #todo
@@ -62,13 +63,11 @@ def index(eventalign_result,pos_start,out_paths,locks):
            pos_end += eventalign_result.loc[index]['line_length'].sum()
            f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
            pos_start = pos_end
-#   with locks['log'], open(out_paths['log'],'a') as f:
-#       f.write(''.join([str(i)+'\n' for i in set(eventalign_result['read_index'])]))    
 
-def parallel_index(eventalign_filepath,summary_filepath,out_dir,n_processes,resume):
+def parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume):
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
-    for out_filetype in ['index','log']:
+    for out_filetype in ['index']:
         out_paths[out_filetype] = os.path.join(out_dir,'eventalign.%s' %out_filetype)
         locks[out_filetype] = multiprocessing.Lock()
         
@@ -78,7 +77,6 @@ def parallel_index(eventalign_filepath,summary_filepath,out_dir,n_processes,resu
         read_names_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]
     else:
         # Create empty files.
-        open(out_paths['log'],'w').close()
         with open(out_paths['index'],'w') as f:
             f.write('transcript_id,read_index,pos_start,pos_end\n') # header
 
@@ -91,32 +89,32 @@ def parallel_index(eventalign_filepath,summary_filepath,out_dir,n_processes,resu
     for p in consumers:
         p.start()
         
-    ## Load tasks into task_queue. A task is eventalign information of one read.            
-    result = None
-    chunk_split = None
-##    for chunk in pd.read_csv(eventalign_filepath, chunksize=1000000,sep='\t'):
-##        chunk_complete = chunk[chunk['read_index'] != chunk.iloc[-1]['read_index']]
-##        chunk_split = chunk[chunk['read_index'] == chunk.iloc[-1]['read_index']]
-##        task_queue.put((pd.concat([chunk_split,chunk_complete]),out_paths))
-
+    ## Load tasks into task_queue. A task is eventalign information of one read.
     eventalign_file = open(eventalign_filepath,'r')
     pos_start = len(eventalign_file.readline()) #remove header
-    for chunk in pd.read_csv(eventalign_filepath, chunksize=1000000,sep='\t'):
-          lines=[len(eventalign_file.readline()) for i in range(1000000)] #read the file at where it left off because the file is opened once
-          lines=[line for line in lines if line > 0] #clean up the lengths of the empty lines
-          chunk['line_length'] = np.array(lines)
-          index_features=['contig','read_index','line_length']
-          task_queue.put((chunk[index_features],pos_start,out_paths))
-          pos_start += sum(lines)
+    chunk_split = None
+    index_features = ['contig','read_index','line_length']
+    for chunk in pd.read_csv(eventalign_filepath, chunksize=chunk_size,sep='\t'):
+        chunk_complete = chunk[chunk['read_index'] != chunk.iloc[-1]['read_index']]
+        chunk_concat = pd.concat([chunk_split,chunk_complete])
+        chunk_concat_size = len(chunk_concat.index)
+        ## read the file at where it left off because the file is opened once ##
+        lines = [len(eventalign_file.readline()) for i in range(chunk_concat_size)]
+        chunk_concat['line_length'] = np.array(lines)
+        task_queue.put((chunk_concat[index_features],pos_start,out_paths))
+        pos_start += sum(lines)
+        chunk_split = chunk[chunk['read_index'] == chunk.iloc[-1]['read_index']]
+    ## the loop above leaves off w/o adding the last read_index to eventalign.index
+    chunk_split_size = len(chunk_split.index)
+    lines = [len(eventalign_file.readline()) for i in range(chunk_split_size)]
+    chunk_split['line_length'] = np.array(lines)
+    task_queue.put((chunk_split[index_features],pos_start,out_paths))
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
 
     # Wait for all of the tasks to finish.
     task_queue.join()
-    
-#    with open(out_paths['log'],'a+') as f:
-#        f.write(helper.decor_message('successfully finished'))
     
 def t2g(gene_id,ensembl,g2t_mapping,df_eventalign_index,readcount_min):
     tx_ids = []
@@ -546,6 +544,7 @@ def main():
     n_processes = args.n_processes        
     eventalign_filepath = args.eventalign
     summary_filepath = args.summary
+    chunk_size = args.chunk_size
     out_dir = args.out_dir
     ensembl_version = args.ensembl
     ensembl_species = args.species
@@ -568,7 +567,13 @@ def main():
         transcript_fasta_paths_or_urls = args.transcript_fasta_paths_or_urls
         
     misc.makedirs(out_dir) #todo: check every level.
-    # (0) Create a ensembl data base
+    
+    # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
+    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
+    if not helper.is_successful(eventalign_log_filepath):
+        parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
+    
+    # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
         if customised_genome:
             db = Genome(
@@ -580,19 +585,11 @@ def main():
             # parse GTF and construct database of genomic features
             db.index()
         else:
-            db = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping. 
-    
-    # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
-    if not helper.is_successful(eventalign_log_filepath):
-        parallel_index(eventalign_filepath,summary_filepath,out_dir,n_processes,resume)
-
-    # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
-    if genome:  
+            db = EnsemblRelease(ensembl_version,ensembl_species) # Default: human reference genome GRCh38 release 91 used in the ont mapping.    
         parallel_preprocess_gene(eventalign_filepath,db,out_dir,n_processes,readcount_min,readcount_max,resume)
+
     else:
         parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume)
-
 
 if __name__ == '__main__':
     main()
