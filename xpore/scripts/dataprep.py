@@ -432,24 +432,27 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
 
     # Load tasks into task_queue.
     tx_ids_processed = []
-    with h5py.File(os.path.join(out_dir,'eventalign.hdf5'),'r') as f:
-        for tx_id in f.keys():
-            if resume and (tx_id in tx_ids_done):
-                continue
-                
-            read_ids = []
-            n_reads = 0
+    df_eventalign_index = pd.read_csv(os.path.join(out_dir,'eventalign.index'))
+    df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
+    tx_ids = df_eventalign_index['transcript_id'].values.tolist()
+    tx_ids = list(dict.fromkeys(tx_ids))
+    df_eventalign_index.set_index('transcript_id',inplace=True)
+    with open(eventalign_filepath,'r') as eventalign_result:
+        for tx_id in tx_ids:
             data_dict = dict()
-            for read_id in f[tx_id].keys():
-                if n_reads < readcount_max:
-                    data_dict[read_id] = f[tx_id][read_id]['events'][:]
-                    read_ids += [read_id]
-                    n_reads += 1
-                else:
+            readcount = 0
+            for _,row in df_eventalign_index.loc[[tx_id]].iterrows():
+                read_index,pos_start,pos_end = row['read_index'],row['pos_start'],row['pos_end']
+                eventalign_result.seek(pos_start,0)
+                events_str = eventalign_result.read(pos_end-pos_start)
+                data = combine(events_str)
+                if data.size > 1:
+                    data_dict[read_index] = data
+                readcount += 1 
+                if readcount > readcount_max:
                     break
-            if n_reads >= readcount_min:
+            if readcount>=readcount_min:
                 task_queue.put((tx_id,data_dict,out_paths)) # Blocked if necessary until a free slot is available. 
-                tx_ids_processed += [tx_id]
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
@@ -501,21 +504,21 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo
     idx_sorted = np.lexsort((events['reference_kmer'],events['transcriptomic_position'],events['transcript_id']))
     key_tuples, index = np.unique(list(zip(events['transcript_id'][idx_sorted],events['transcriptomic_position'][idx_sorted],events['reference_kmer'][idx_sorted])),return_index = True,axis=0) #'chr',
     y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
-    read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
+#    read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
     reference_kmer_arrays = np.split(events['reference_kmer'][idx_sorted], index[1:])
 
     # Prepare
     # print('Reformating the data for each genomic position ...')
     data = defaultdict(dict)
     # for each position, make it ready for json dump
-    for key_tuple,y_array,read_id_array,reference_kmer_array in zip(key_tuples,y_arrays,read_id_arrays,reference_kmer_arrays):
+    for key_tuple,y_array,reference_kmer_array in zip(key_tuples,y_arrays,reference_kmer_arrays):
         idx,position,kmer = key_tuple
-        position = int(position.decode('UTF-8'))
-        kmer = kmer.decode('UTF-8')
+        position = int(position)
+        kmer = kmer
         if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(y_array) == 0):
             continue
                         
-        data[position] = {kmer: list(np.around(y_array,decimals=2))} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
+        data[position] = {kmer: list(np.around(y_array,decimals=2))}
         
     # write to file.
     log_str = '%s: Data preparation ... Done.' %(tx_id)
