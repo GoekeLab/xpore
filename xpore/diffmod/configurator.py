@@ -51,7 +51,7 @@ class Configurator(object):
 
         method.setdefault('name', 'gmm')
         method.setdefault('max_iters', 500)
-        method.setdefault('stopping_criteria', 0.0001)
+        method.setdefault('stopping_criteria', 0.00001)
         method.setdefault('compute_elbo', True)
         method.setdefault('verbose', False)
         method.setdefault('update', ['z','y','w','mu_tau'])

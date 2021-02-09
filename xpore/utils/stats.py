@@ -18,7 +18,13 @@ def z_test(y1, y2, n1, n2):
 def calc_prob_overlapping(means, variances):
     sigma1, sigma2 = np.sqrt(variances)
     mu1, mu2 = means
-    return NormalDist(mu=mu1, sigma=sigma1).overlap(NormalDist(mu=mu2, sigma=sigma2))
+    ### the bug causing entry had sigma1 == sigma2 and mu1 == mu2
+    #print("sigma1: ",sigma1,"sigma2: ",sigma2)
+    #print("mu1: ",mu1,"mu2: ",mu2)
+    if sigma1 != sigma2 and mu1 != mu2:
+        return NormalDist(mu=mu1, sigma=sigma1).overlap(NormalDist(mu=mu2, sigma=sigma2))
+    else:
+        return np.nan,[np.nan,np.nan,np.nan,np.nan]
 
 class NormalDist(object):
     "Modified from the library statistics.py (Authors)(https://github.com/python/cpython/blob/3.8/Lib/statistics.py) which is under GPL-compatible license."
