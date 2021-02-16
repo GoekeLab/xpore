@@ -541,8 +541,8 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo
         f.write(log_str + '\n')
         
 
-def index_nanopolish(eventalign_filepath,summary_filepath,out_dir,n_processes):
-    with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
+# def index_nanopolish(eventalign_filepath,summary_filepath,out_dir,n_processes):
+#     with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
         
 #         reader_summary = csv.DictReader(summary_file, delimiter="\t")
 #         reader_eventalign = csv.DictReader(eventalign_file, delimiter="\t")
