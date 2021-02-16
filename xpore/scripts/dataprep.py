@@ -55,14 +55,14 @@ def get_args():
     return parser.parse_args()
 
 def index(eventalign_result,pos_start,out_paths,locks):
-   eventalign_result = eventalign_result.set_index(['contig','read_index'])
-   pos_end=pos_start
-   with locks['index'], open(out_paths['index'],'a') as f_index:
-       for index in list(dict.fromkeys(eventalign_result.index)):
-           transcript_id,read_index = index
-           pos_end += eventalign_result.loc[index]['line_length'].sum()
-           f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
-           pos_start = pos_end
+    eventalign_result = eventalign_result.set_index(['contig','read_index'])
+    pos_end=pos_start
+    with locks['index'], open(out_paths['index'],'a') as f_index:
+        for index in list(dict.fromkeys(eventalign_result.index)):
+            transcript_id,read_index = index
+            pos_end += eventalign_result.loc[index]['line_length'].sum()
+            f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
+            pos_start = pos_end
 
 def parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume):
     # Create output paths and locks.
@@ -72,13 +72,13 @@ def parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_pro
         locks[out_filetype] = multiprocessing.Lock()
         
         
-    read_names_done = []
-    if resume and os.path.exists(out_paths['log']):
-        read_names_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]
-    else:
+#     read_names_done = []
+#     if resume and os.path.exists(out_paths['log']):
+#         read_names_done = [line.rstrip('\n') for line in open(out_paths['log'],'r')]
+#     else:
         # Create empty files.
-        with open(out_paths['index'],'w') as f:
-            f.write('transcript_id,read_index,pos_start,pos_end\n') # header
+    with open(out_paths['index'],'w') as f:
+        f.write('transcript_id,read_index,pos_start,pos_end\n') # header
 
 
     # Create communication queues.
@@ -626,5 +626,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
