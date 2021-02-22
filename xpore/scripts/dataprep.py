@@ -360,13 +360,20 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
     events = np.concatenate(events)
     genomic_coordinates = np.concatenate(genomic_coordinates)
    
-    # Sort and split 
-    idx_sorted = np.lexsort((events['reference_kmer'],genomic_coordinates['genomic_position'],genomic_coordinates['gene_id']))
-    key_tuples, index = np.unique(list(zip(genomic_coordinates['gene_id'][idx_sorted],genomic_coordinates['genomic_position'][idx_sorted],events['reference_kmer'][idx_sorted])),return_index = True,axis=0) #'chr',
+    # Sort and split # 
+#     idx_sorted = np.lexsort((events['reference_kmer'],genomic_coordinates['genomic_position'],genomic_coordinates['gene_id']))
+#     key_tuples, index = np.unique(list(zip(genomic_coordinates['gene_id'][idx_sorted],genomic_coordinates['genomic_position'][idx_sorted],events['reference_kmer'][idx_sorted])),return_index = True,axis=0) #'chr',
+#     y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
+# #     read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
+#     g_kmer_arrays = np.split(genomic_coordinates['g_kmer'][idx_sorted], index[1:])
+
+    idx_sorted = np.argsort(genomic_coordinates['genomic_position'])
+    unique_positions, index = np.unique(genomic_coordinates['genomic_position'][idx_sorted],return_index = True)
     y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
-#     read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
+    #     read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
     g_kmer_arrays = np.split(genomic_coordinates['g_kmer'][idx_sorted], index[1:])
-    
+    g_positions_arrays = np.split(genomic_coordinates['genomic_position'][idx_sorted], index[1:])
+
     # Prepare
     # print('Reformating the data for each genomic position ...')
     data = defaultdict(dict)
@@ -374,8 +381,9 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
 #     data = dict(zip(key_tuples, y_arrays))
 
     asserted = True
-    for key_tuple,y_array,g_kmer_array in zip(key_tuples,y_arrays,g_kmer_arrays):
-        gene_id,position,kmer = key_tuple            
+#     for key_tuple,y_array,g_kmer_array in zip(key_tuples,y_arrays,g_kmer_arrays):
+    for position,y_array,g_kmer_array,g_positions_array in zip(unique_positions,y_arrays,g_kmer_arrays,g_positions_arrays):
+#         gene_id,position,kmer = key_tuple            
         if (len(set(g_kmer_array)) == 1) and ('XXXXX' in set(g_kmer_array)) or (len(y_array) == 0):
             continue
             
@@ -385,10 +393,13 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
             
         else:
             try:
-                assert {kmer} == set(g_kmer_array)
+                assert len(set(g_kmer_array)) == 1
+                assert {position} == set(g_positions_array)
             except:
                 asserted = False
                 break
+            else:
+                kmer = set(g_kmer_array).pop()
 
         data[position] = {kmer: list(y_array)} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
         
@@ -616,7 +627,7 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-#     parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
+    parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
