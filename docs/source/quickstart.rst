@@ -62,6 +62,7 @@ Below is how it looks like::
             method: t-test
             threshold: 0.1
 
+Note that if high accuracy is required, the ``prefiltering`` section should be removed and the processing time is accordingly longer.
 See the :ref:`Configuration file page <configuration>` for details.
 
 3. Now that we have the data and the configuration file ready for modelling differential modifications using ``xpore-diffmod``. 

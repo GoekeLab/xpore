@@ -220,7 +220,7 @@ def parallel_preprocess_gene(eventalign_filepath,ensembl,out_dir,n_processes,rea
         p.start()
 
     # Get all gene ids and create a dict of eventalign.combine index.
-    gene_ids = set()
+#     gene_ids = set()
 
     
     df_eventalign_index = pd.read_csv(os.path.join(out_dir,'eventalign.index'))
@@ -258,13 +258,13 @@ def parallel_preprocess_gene(eventalign_filepath,ensembl,out_dir,n_processes,rea
     with open(eventalign_filepath,'r') as eventalign_result:
 
         for gene_id in g2t_mapping:
+                        
             if resume and (gene_id in gene_ids_done):
                 continue
             # mapping a gene <-> transcripts
 
             n_reads, tx_ids, t2g_mapping = t2g(gene_id,ensembl,g2t_mapping,df_eventalign_index,readcount_min)
             #
-            print(gene_id,n_reads)
             if n_reads >= readcount_min: 
                 data_dict = dict()
                 readcount = 0
@@ -275,7 +275,7 @@ def parallel_preprocess_gene(eventalign_filepath,ensembl,out_dir,n_processes,rea
                         events_str = eventalign_result.read(pos_end-pos_start)
                         data = combine(events_str)
                         #data = np.genfromtxt(f_string,delimiter=',',dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
-                        if data.size > 1:
+                        if (data is not None) and (data.size > 1):
                             data_dict[read_index] = data
                         readcount += 1 
                         if readcount > readcount_max:
@@ -284,6 +284,7 @@ def parallel_preprocess_gene(eventalign_filepath,ensembl,out_dir,n_processes,rea
                     if readcount > readcount_max:
                         break
                 if len(data_dict)>=readcount_min:
+#                     print(gene_id,len(data_dict)) #len(data_dict) is the number of reads to be processed.
                     task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
                     gene_ids_processed += [gene_id]
 
@@ -365,21 +366,34 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
     y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
 #     read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
     g_kmer_arrays = np.split(genomic_coordinates['g_kmer'][idx_sorted], index[1:])
-
+    
     # Prepare
     # print('Reformating the data for each genomic position ...')
     data = defaultdict(dict)
     # for each position, make it ready for json dump
 #     data = dict(zip(key_tuples, y_arrays))
+
+    asserted = True
     for key_tuple,y_array,g_kmer_array in zip(key_tuples,y_arrays,g_kmer_arrays):
-        gene_id,position,kmer = key_tuple
+        gene_id,position,kmer = key_tuple            
         if (len(set(g_kmer_array)) == 1) and ('XXXXX' in set(g_kmer_array)) or (len(y_array) == 0):
             continue
-                        
+            
+        if 'XXXXX' in set(g_kmer_array):
+            y_array = y_array[g_kmer_array != 'XXXXX']  
+            assert len(y_array) == len(g_kmer_array) - (g_kmer_array=='XXXXX').sum()
+            
+        else:
+            try:
+                assert {kmer} == set(g_kmer_array)
+            except:
+                asserted = False
+                break
+
         data[position] = {kmer: list(y_array)} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
         
     # write to file.
-    log_str = '%s: Data preparation ... Done.' %(gene_id)
+    log_str = '%s: %s' %(gene_id,asserted)
 
     with locks['json'], open(out_paths['json'],'a') as f:
 
@@ -602,9 +616,7 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    eventalign_log_filepath = os.path.join(out_dir,'eventalign.log')
-    if not helper.is_successful(eventalign_log_filepath):
-        parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
+#     parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
