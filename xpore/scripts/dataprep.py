@@ -390,16 +390,15 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
         if 'XXXXX' in set(g_kmer_array):
             y_array = y_array[g_kmer_array != 'XXXXX']  
             assert len(y_array) == len(g_kmer_array) - (g_kmer_array=='XXXXX').sum()
+            g_kmer_array = g_kmer_array[g_kmer_array != 'XXXXX']  
             
-        else:
-            try:
-                assert len(set(g_kmer_array)) == 1
-                assert {position} == set(g_positions_array)
-            except:
-                asserted = False
-                break
-            else:
-                kmer = set(g_kmer_array).pop()
+        try:
+            assert len(set(g_kmer_array)) == 1
+            assert {position} == set(g_positions_array)
+        except:
+            asserted = False
+            break
+        kmer = set(g_kmer_array).pop()
 
         data[position] = {kmer: list(y_array)} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
         
@@ -489,7 +488,7 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
         f.write('Total %d transcripts.\n' %len(tx_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo
+def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo -- to correct sort and split.
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
@@ -627,7 +626,7 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
+#     parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
