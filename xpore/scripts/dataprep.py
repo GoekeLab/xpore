@@ -25,8 +25,6 @@ def get_args():
     required.add_argument('--eventalign', dest='eventalign', help='eventalign filepath, the output from nanopolish.',required=True)
     required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
     required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
-    
-    
 
 
     # Optional
@@ -36,12 +34,13 @@ def get_args():
 
     # Use customised db
     # These arguments will be passed to Genome from pyensembl
-    optional.add_argument('--customised_genome', dest='customised_genome', help='customised_genome.',default=False,action='store_true')
-    optional.add_argument('--reference_name', dest='reference_name', help='reference_name.',type=str)
-    optional.add_argument('--annotation_name', dest='annotation_name', help='annotation_name.',type=str)
-    optional.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf_path_or_url.',type=str)
-    optional.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript_fasta_paths_or_urls.',type=str)
+    optional.add_argument('--customised_genome', dest='customised_genome', help='if customised genome provided.',default=False,action='store_true')
+    optional.add_argument('--reference_name', dest='reference_name', help='reference name.',type=str)
+    optional.add_argument('--annotation_name', dest='annotation_name', help='annotation name.',type=str)
+    optional.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf file path or url.',type=str)
+    optional.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript fasta paths or urls.',type=str)
 
+    optional.add_argument('--skip_eventalign_index', dest='skip_eventalign_index', help='skip indexing the eventalign nanopolish output.',default=False,action='store_true')
 
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     optional.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true') 
@@ -626,7 +625,8 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
+    if not args.skip_eventalign_index:
+        parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
