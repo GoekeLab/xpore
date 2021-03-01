@@ -26,7 +26,6 @@ def get_args():
     required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
     required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
 
-
     # Optional
     # Use ensembl db
     optional.add_argument('--ensembl', dest='ensembl', help='ensembl version for gene-transcript mapping.',type=int, default=91)
@@ -487,7 +486,7 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
         f.write('Total %d transcripts.\n' %len(tx_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo -- to correct sort and split.
+def preprocess_tx(tx_id,data_dict,out_paths,locks): 
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
@@ -524,8 +523,8 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo -- to correct sort a
     events = np.concatenate(events)
    
     # Sort and split 
-    idx_sorted = np.lexsort((events['reference_kmer'],events['transcriptomic_position'],events['transcript_id']))
-    key_tuples, index = np.unique(list(zip(events['transcript_id'][idx_sorted],events['transcriptomic_position'][idx_sorted],events['reference_kmer'][idx_sorted])),return_index = True,axis=0) #'chr',
+    idx_sorted = np.argsort(events['transcriptomic_position'])
+    unique_positions, index = np.unique(events['transcriptomic_position'][idx_sorted],return_index = True)
     y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
 #    read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
     reference_kmer_arrays = np.split(events['reference_kmer'][idx_sorted], index[1:])
@@ -534,13 +533,27 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo -- to correct sort a
     # print('Reformating the data for each genomic position ...')
     data = defaultdict(dict)
     # for each position, make it ready for json dump
-    for key_tuple,y_array,reference_kmer_array in zip(key_tuples,y_arrays,reference_kmer_arrays):
-        idx,position,kmer = key_tuple
+    asserted = True
+#     for key_tuple,y_array,reference_kmer_array in zip(key_tuples,y_arrays,reference_kmer_arrays):
+    for position,y_array,reference_kmer_array in zip(unique_positions,y_arrays,reference_kmer_arrays):
+        
         position = int(position)
-        kmer = kmer
         if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(y_array) == 0):
             continue
-                        
+            
+        if 'XXXXX' in set(reference_kmer_array):
+            y_array = y_array[reference_kmer_array != 'XXXXX']  
+            assert len(y_array) == len(reference_kmer_array) - (reference_kmer_array=='XXXXX').sum()
+            reference_kmer_array = reference_kmer_array[reference_kmer_array != 'XXXXX']  
+            
+        try:
+            assert len(set(reference_kmer_array)) == 1
+            assert {position} == set(g_positions_array)
+        except:
+            asserted = False
+            break
+        kmer = set(reference_kmer_array).pop()
+
         data[position] = {kmer: list(np.around(y_array,decimals=2))}
         
     # write to file.
