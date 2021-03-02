@@ -30,7 +30,7 @@ xPore is described in detail in a preprint (https://www.biorxiv.org/content/10.1
 
 ### Release History
 
-The current release is xPore v1.0.0.
+The current release is xPore v1.0.
 
 Please refer to the github release history for previous releases: https://github.com/GoekeLab/xpore/releases
 

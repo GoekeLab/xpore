@@ -60,6 +60,7 @@ Below is how it looks like::
         prefiltering:
             method: t-test
             threshold: 0.1
+        stopping_criteria: 0.0001
 
 Note that if high accuracy is required, the ``prefiltering`` section should be removed and the processing time is accordingly longer.
 See the :ref:`Configuration file page <configuration>` for details.

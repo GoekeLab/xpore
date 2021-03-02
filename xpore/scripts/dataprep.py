@@ -475,6 +475,7 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
                     break
             if readcount>=readcount_min:
                 task_queue.put((tx_id,data_dict,out_paths)) # Blocked if necessary until a free slot is available. 
+                tx_ids_processed += [tx_id]
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
@@ -548,7 +549,6 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):
             
         try:
             assert len(set(reference_kmer_array)) == 1
-            assert {position} == set(g_positions_array)
         except:
             asserted = False
             break
@@ -557,7 +557,7 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):
         data[position] = {kmer: list(np.around(y_array,decimals=2))}
         
     # write to file.
-    log_str = '%s: Data preparation ... Done.' %(tx_id)
+    log_str = '%s: %s.' %(tx_id,asserted)
     with locks['json'], open(out_paths['json'],'a') as f:
         pos_start = f.tell()
         f.write('{')
