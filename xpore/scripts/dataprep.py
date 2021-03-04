@@ -59,7 +59,11 @@ def index(eventalign_result,pos_start,out_paths,locks):
         for index in list(dict.fromkeys(eventalign_result.index)):
             transcript_id,read_index = index
             pos_end += eventalign_result.loc[index]['line_length'].sum()
-            f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
+            
+            try: # sometimes read_index is nan
+                f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
+            except:
+                pass
             pos_start = pos_end
 
 def parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume):
