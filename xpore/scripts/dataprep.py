@@ -25,9 +25,6 @@ def get_args():
     required.add_argument('--eventalign', dest='eventalign', help='eventalign filepath, the output from nanopolish.',required=True)
     required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
     required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
-    
-    
-
 
     # Optional
     # Use ensembl db
@@ -36,12 +33,13 @@ def get_args():
 
     # Use customised db
     # These arguments will be passed to Genome from pyensembl
-    optional.add_argument('--customised_genome', dest='customised_genome', help='customised_genome.',default=False,action='store_true')
-    optional.add_argument('--reference_name', dest='reference_name', help='reference_name.',type=str)
-    optional.add_argument('--annotation_name', dest='annotation_name', help='annotation_name.',type=str)
-    optional.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf_path_or_url.',type=str)
-    optional.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript_fasta_paths_or_urls.',type=str)
+    optional.add_argument('--customised_genome', dest='customised_genome', help='if customised genome provided.',default=False,action='store_true')
+    optional.add_argument('--reference_name', dest='reference_name', help='reference name.',type=str)
+    optional.add_argument('--annotation_name', dest='annotation_name', help='annotation name.',type=str)
+    optional.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf file path or url.',type=str)
+    optional.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript fasta paths or urls.',type=str)
 
+    optional.add_argument('--skip_eventalign_index', dest='skip_eventalign_index', help='skip indexing the eventalign nanopolish output.',default=False,action='store_true')
 
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     optional.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true') 
@@ -61,7 +59,11 @@ def index(eventalign_result,pos_start,out_paths,locks):
         for index in list(dict.fromkeys(eventalign_result.index)):
             transcript_id,read_index = index
             pos_end += eventalign_result.loc[index]['line_length'].sum()
-            f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
+            
+            try: # sometimes read_index is nan
+                f_index.write('%s,%d,%d,%d\n' %(transcript_id,read_index,pos_start,pos_end))
+            except:
+                pass
             pos_start = pos_end
 
 def parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume):
@@ -477,6 +479,7 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
                     break
             if readcount>=readcount_min:
                 task_queue.put((tx_id,data_dict,out_paths)) # Blocked if necessary until a free slot is available. 
+                tx_ids_processed += [tx_id]
 
     # Put the stop task into task_queue.
     task_queue = helper.end_queue(task_queue,n_processes)
@@ -488,7 +491,7 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
         f.write('Total %d transcripts.\n' %len(tx_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo -- to correct sort and split.
+def preprocess_tx(tx_id,data_dict,out_paths,locks): 
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
@@ -525,8 +528,8 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo -- to correct sort a
     events = np.concatenate(events)
    
     # Sort and split 
-    idx_sorted = np.lexsort((events['reference_kmer'],events['transcriptomic_position'],events['transcript_id']))
-    key_tuples, index = np.unique(list(zip(events['transcript_id'][idx_sorted],events['transcriptomic_position'][idx_sorted],events['reference_kmer'][idx_sorted])),return_index = True,axis=0) #'chr',
+    idx_sorted = np.argsort(events['transcriptomic_position'])
+    unique_positions, index = np.unique(events['transcriptomic_position'][idx_sorted],return_index = True)
     y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
 #    read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
     reference_kmer_arrays = np.split(events['reference_kmer'][idx_sorted], index[1:])
@@ -535,17 +538,30 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):  # todo -- to correct sort a
     # print('Reformating the data for each genomic position ...')
     data = defaultdict(dict)
     # for each position, make it ready for json dump
-    for key_tuple,y_array,reference_kmer_array in zip(key_tuples,y_arrays,reference_kmer_arrays):
-        idx,position,kmer = key_tuple
+    asserted = True
+#     for key_tuple,y_array,reference_kmer_array in zip(key_tuples,y_arrays,reference_kmer_arrays):
+    for position,y_array,reference_kmer_array in zip(unique_positions,y_arrays,reference_kmer_arrays):
+        
         position = int(position)
-        kmer = kmer
         if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(y_array) == 0):
             continue
-                        
+            
+        if 'XXXXX' in set(reference_kmer_array):
+            y_array = y_array[reference_kmer_array != 'XXXXX']  
+            assert len(y_array) == len(reference_kmer_array) - (reference_kmer_array=='XXXXX').sum()
+            reference_kmer_array = reference_kmer_array[reference_kmer_array != 'XXXXX']  
+            
+        try:
+            assert len(set(reference_kmer_array)) == 1
+        except:
+            asserted = False
+            break
+        kmer = set(reference_kmer_array).pop()
+
         data[position] = {kmer: list(np.around(y_array,decimals=2))}
         
     # write to file.
-    log_str = '%s: Data preparation ... Done.' %(tx_id)
+    log_str = '%s: %s.' %(tx_id,asserted)
     with locks['json'], open(out_paths['json'],'a') as f:
         pos_start = f.tell()
         f.write('{')
@@ -626,7 +642,8 @@ def main():
     misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
-    parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
+    if not args.skip_eventalign_index:
+        parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
