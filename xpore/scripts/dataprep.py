@@ -6,6 +6,7 @@ import multiprocessing
 import h5py
 import csv
 import ujson
+import pickle
 from operator import itemgetter
 from collections import defaultdict
 from io import StringIO
@@ -196,6 +197,8 @@ def readFasta(transcript_fasta_paths_or_urls):
         id=entry[0].split(".")[0]
         seq="".join(entry[1:])
         dict[id]=seq
+    with open(transcript_fasta_paths_or_urls+'.pickle', 'wb') as fasta_pickle:
+        pickle.dump(dict, fasta_pickle)
     return dict
 
 def readGTF(gtf_path_or_url):
@@ -228,6 +231,8 @@ def readGTF(gtf_path_or_url):
             tx_pos.append((tx_start,tx_end))
             tx_start=tx_end+1
         dict[id]['tx_exon']=tx_pos
+    with open(gtf_path_or_url+'.pickle', 'wb') as gtf_pickle:
+        pickle.dump(dict, gtf_pickle)
     return dict
 
 def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume):
@@ -680,8 +685,13 @@ def main():
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
-        fasta_dict = readFasta(transcript_fasta_paths_or_urls)
-        gtf_dict = readGTF(gtf_path_or_url)
+        if os.path.exists(transcript_fasta_paths_or_urls+'.pickle') and os.path.exists(gtf_path_or_url+'.pickle'):
+            with open(transcript_fasta_paths_or_urls+'.pickle','rb') as fasta_pickle, open(gtf_path_or_url+'.pickle','rb') as gtf_pickle:
+                fasta_dict = pickle.load(fasta_pickle)
+                gtf_dict = pickle.load(gtf_pickle)
+        else:
+            fasta_dict = readFasta(transcript_fasta_paths_or_urls)
+            gtf_dict = readGTF(gtf_path_or_url)
         parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume)
 
     else:
