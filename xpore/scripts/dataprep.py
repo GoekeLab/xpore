@@ -489,9 +489,9 @@ def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,lo
     # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx'] # columns in the eventalign file per read.
 
     events = []
-    condition_labels = []
-    run_labels = []
-    read_ids = []
+#    condition_labels = []
+#    run_labels = []
+#    read_ids = []
     genomic_coordinates = []
     
     # Concatenate
@@ -773,10 +773,10 @@ def preprocess_tx_xpore(tx_id,data_dict,n_neighbors,out_paths,locks):
     # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx'] # columns in the eventalign file per read.
 
     events = []
-    condition_labels = []
-    run_labels = []
-    read_ids = []
-    transcriptomic_coordinates = []
+#    condition_labels = []
+#    run_labels = []
+#    read_ids = []
+#    transcriptomic_coordinates = []
     
     # Concatenate
     if len(data_dict) == 0:
@@ -931,6 +931,103 @@ def preprocess_tx_m6anet(tx_id,data_dict,n_neighbors,out_paths,locks):  # todo
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(log_str + '\n')        
 
+def preprocess_tx_xpore_m6anet(tx_id,data_dict,n_neighbors,out_paths,locks):  # todo
+    """
+    Convert transcriptomic to genomic coordinates for a gene.
+    
+    Parameters
+    ----------
+        tx_id: str
+            Transcript ID.
+        data_dict: {read_id:events_array}
+            Events for each read.
+        features: [str] # todo
+            A list of features to collect from the reads that are aligned to each genomic coordinate in the output.
+    Returns
+    -------
+    dict
+        A dict of all specified features collected for each genomic coordinate.
+    """
+    
+    # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx'] # columns in the eventalign file per read.
+
+    # Concatenate
+    if len(data_dict) == 0:
+        return
+    ##for xpore
+    xpore_events = []
+    ##for m6anet
+    m6anet_features_arrays = []
+    m6anet_reference_kmer_arrays = [] 
+    m6anet_transcriptomic_positions_arrays = []
+
+    for read_id,events_per_read in data_dict.items(): 
+        ##for xpore
+        xpore_events += [events_per_read]
+        ##for m6anet
+        events_per_read = filter_events(events_per_read, n_neighbors, M6A_KMERS)
+        for event_per_read in events_per_read:
+            m6anet_features_arrays.append(event_per_read[0])
+            m6anet_reference_kmer_arrays.append([combine_sequence(kmer) for kmer in event_per_read[1]])
+            m6anet_transcriptomic_positions_arrays.append(event_per_read[3])
+    ##for xpore
+    xpore_events = np.concatenate(events)
+    ##for m6anet
+    if len(features_arrays) == 0:
+        return
+    else:
+        m6anet_features_arrays = np.concatenate(features_arrays)
+        m6anet_reference_kmer_arrays = np.concatenate(reference_kmer_arrays)
+        m6anet_transcriptomic_positions_arrays = np.concatenate(transcriptomic_positions_arrays)
+        assert(len(m6anet_features_arrays) == len(m6anet_reference_kmer_arrays) == len(m6anet_transcriptomic_positions_arrays))
+
+    # Sort and split
+
+    idx_sorted = np.argsort(transcriptomic_positions_arrays)
+    positions, index = np.unique(transcriptomic_positions_arrays[idx_sorted], return_index = True,axis=0) #'chr',
+    features_arrays = np.split(features_arrays[idx_sorted], index[1:])
+    reference_kmer_arrays = np.split(reference_kmer_arrays[idx_sorted], index[1:])
+
+    # Prepare
+    # print('Reformating the data for each genomic position ...')
+    data = defaultdict(dict)
+
+
+    # for each position, make it ready for json dump
+    for position, features_array, reference_kmer_array in zip(positions, features_arrays, reference_kmer_arrays):
+        kmer = set(reference_kmer_array)
+        assert(len(kmer) == 1)
+        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(features_array) == 0):
+            continue
+
+        data[int(position)] = {kmer.pop(): features_array.tolist()}
+
+    # write to file.
+    log_str = '%s: Data preparation ... Done.' %(tx_id)
+    with locks['json'], open(out_paths['json'],'a') as f, \
+            locks['index'], open(out_paths['index'],'a') as g, \
+            locks['readcount'], open(out_paths['readcount'],'a') as h:
+        
+        for pos, dat in data.items():
+            pos_start = f.tell()
+            f.write('{')
+            f.write('"%s":{"%d":' %(tx_id,pos))
+            ujson.dump(dat, f)
+            f.write('}}\n')
+            pos_end = f.tell()
+        
+            # with locks['index'], open(out_paths['index'],'a') as f:
+            g.write('%s,%d,%d,%d\n' %(tx_id,pos,pos_start,pos_end))
+        
+            # with locks['readcount'], open(out_paths['readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
+            n_reads = 0
+            for kmer, features in dat.items():
+                n_reads += len(features)
+            h.write('%s,%d,%d\n' %(tx_id,pos,n_reads))
+        
+    with locks['log'], open(out_paths['log'],'a') as f:
+        f.write(log_str + '\n')  
+
 # def index_nanopolish(eventalign_filepath,summary_filepath,out_dir,n_processes):
 #     with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
         
@@ -978,7 +1075,7 @@ def main():
 
     program = program.split(",")
     if len(program) == 2:
-        fun_dict={'combine':combine_xpore,'preprocess_gene':preprocess_gene_xpore,'preprocess_tx':preprocess_tx_xpore}
+        fun_dict={'combine':combine_xpore,'preprocess_gene':preprocess_gene_xpore,'preprocess_tx':preprocess_tx_xpore_m6anet}
     else:
         if program[0] == 'xpore':
             fun_dict={'combine':combine_xpore,'preprocess_gene':preprocess_gene_xpore,'preprocess_tx':preprocess_tx_xpore}
