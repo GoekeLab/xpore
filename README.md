@@ -24,7 +24,7 @@ $ pyensembl install --release 91 --species homo_sapiens  # please specify the co
 ```
 ### Documentation
 
-Please refer to the xPore documention ([https://xpore.readthedocs.io](https://xpore.readthedocs.io)) for additional information, a quick start guide, and details on the data processing and output file format.
+Please refer to the xPore documentation ([https://xpore.readthedocs.io](https://xpore.readthedocs.io)) for additional information, a quick start guide, and details on the data processing and output file format.
 
 xPore is described in detail in a preprint (https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1)
 
@@ -40,7 +40,7 @@ Please refer to the github release history for previous releases: https://github
 
 If you use xPore in your research, please cite
 
-[Ploy N. Pratanwanich, Ploy N. et al. "Detection of differential RNA modifications from direct RNA sequencing of human cell lines". *bioRxiv* (2020) doi: https://doi.org/10.1101/2020.06.18.160010](https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1)
+[Ploy N. Pratanwanich, et al. "Detection of differential RNA modifications from direct RNA sequencing of human cell lines". *bioRxiv* (2020) doi: https://doi.org/10.1101/2020.06.18.160010](https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1)
 
 
 ---
