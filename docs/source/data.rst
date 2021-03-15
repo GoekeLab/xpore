@@ -3,7 +3,7 @@
 Data
 ======
 
-You can find the links to all preprocessed data used in our manuscript at `Zenodo <10.5281/zenodo.4587662>`_.
+You can find the links to all preprocessed data used in our manuscript at `Zenodo <http://doi.org/10.5281/zenodo.4587662>`_.
 All the raw fast5 and fastq files are also available at `ENA <https://www.ebi.ac.uk/ena/browser/view/PRJEB40872>`_ and `SGNEx <https://github.com/GoekeLab/sg-nex-data>`_. Please refer to our Supplementary Table S7 in our manuscript for full details of data download.
 
 
