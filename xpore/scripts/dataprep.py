@@ -357,25 +357,23 @@ def parallel_preprocess_gene(program,eventalign_filepath,fasta_dict,gtf_dict,fun
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
-    for out_filetype in ['json','index','log','readcount']:
-        out_paths[out_filetype] = os.path.join(out_dir,'data.%s' %out_filetype)
-        locks[out_filetype] = multiprocessing.Lock()
-                
-    # Writing the starting of the files.
     gene_ids_done = []
-    if resume and os.path.exists(out_paths['index']):
-        df_index = pd.read_csv(out_paths['index'],sep=',')
-        gene_ids_done = list(df_index['idx'].unique())
-    else:
-        # with open(out_paths['json'],'w') as f:
-        #     f.write('{\n')
-        #     f.write('"genes":{')
-        open(out_paths['json'],'w').close()
-        with open(out_paths['index'],'w') as f:
-            f.write('idx,start,end\n') # header
-        with open(out_paths['readcount'],'w') as f:
-            f.write('idx,n_reads\n') # header
-        open(out_paths['log'],'w').close()
+    for p in program:
+        for base_out_filetype in ['json','index','log','readcount']:
+            out_filetype= p+"."+base_out_filetype ##out_filetype specific to either xpore or m6anet
+            out_paths[out_filetype] = os.path.join(out_dir,'data.%s' %out_filetype)
+            locks[out_filetype] = multiprocessing.Lock()
+        json_tag,index_tag,readcount_tag,log_tag=p+'.json',p+'.index',p+'.readcount',p+'.log'
+        if resume and os.path.exists(out_paths[index_tag]):
+            df_index = pd.read_csv(out_paths[index_tag],sep=',')
+            gene_ids_done = list(df_index['transcript_id'].unique())
+        else:
+            open(out_paths[json_tag],'w').close()
+            with open(out_paths[index_tag],'w') as f:
+                f.write('idx,start,end\n') # header
+            with open(out_paths[readcount_tag],'w') as f:
+                f.write('idx,n_reads\n') # header
+            open(out_paths[log_tag],'w').close()
 
     # Create communication queues.
     task_queue = multiprocessing.JoinableQueue(maxsize=n_processes * 2)
@@ -459,10 +457,11 @@ def parallel_preprocess_gene(program,eventalign_filepath,fasta_dict,gtf_dict,fun
 
     # Wait for all of the tasks to finish.
     task_queue.join()
-    
-    with open(out_paths['log'],'a+') as f:
-        f.write('Total %d genes.\n' %len(gene_ids_processed))
-        f.write(helper.decor_message('successfully finished'))
+    for p in program:
+        log_tag = p+'.log'
+        with open(out_paths[log_tag],'a+') as f:
+            f.write('Total %d transcripts.\n' %len(gene_ids_processed))
+            f.write(helper.decor_message('successfully finished'))
 
 def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,locks):  
     """
@@ -518,7 +517,7 @@ def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,lo
 
         events += [events_per_read]
         genomic_coordinates += [genomic_coordinate]
-        n_events_per_read = len(events_per_read)
+#        n_events_per_read = len(events_per_read)
 #         else:
 #             print(read_index,len(events_per_read))
 
@@ -570,7 +569,7 @@ def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,lo
     # write to file.
     log_str = '%s: %s' %(gene_id,asserted)
 
-    with locks['json'], open(out_paths['json'],'a') as f:
+    with locks['xpore.json'], open(out_paths['xpore.json'],'a') as f:
 
         pos_start = f.tell()
         f.write('{')
@@ -579,14 +578,14 @@ def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,lo
         f.write('}\n')
         pos_end = f.tell()
 
-    with locks['index'], open(out_paths['index'],'a') as f:
+    with locks['xpore.index'], open(out_paths['xpore.index'],'a') as f:
         f.write('%s,%d,%d\n' %(gene_id,pos_start,pos_end))
         
-    with locks['readcount'], open(out_paths['readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
+    with locks['xpore.readcount'], open(out_paths['xpore.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
         n_reads = len(data_dict)
         f.write('%s,%d\n' %(gene_id,n_reads))
         
-    with locks['log'], open(out_paths['log'],'a') as f:
+    with locks['xpore.log'], open(out_paths['xpore.log'],'a') as f:
         f.write(log_str + '\n')
 
 def preprocess_gene_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,locks):  # todo
@@ -664,9 +663,9 @@ def preprocess_gene_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,l
 
     # write to file.
     log_str = '%s: Data preparation ... Done.' %(gene_id)
-    with locks['json'], open(out_paths['json'],'a') as f, \
-            locks['index'], open(out_paths['index'],'a') as g, \
-            locks['readcount'], open(out_paths['readcount'],'a') as h:
+    with locks['m6anet.json'], open(out_paths['m6anet.json'],'a') as f, \
+            locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as g, \
+            locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as h:
         
         for pos, dat in data.items():
             pos_start = f.tell()
@@ -676,16 +675,175 @@ def preprocess_gene_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,l
             f.write('}}\n')
             pos_end = f.tell()
         
-            # with locks['index'], open(out_paths['index'],'a') as f:
+            # with locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as f:
             g.write('%s,%d,%d,%d\n' %(gene_id,pos,pos_start,pos_end))
         
-            # with locks['readcount'], open(out_paths['readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
+            # with locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
             n_reads = 0
             for kmer, features in dat.items():
                 n_reads += len(features)
             h.write('%s,%d,%d\n' %(gene_id,pos,n_reads))
         
-    with locks['log'], open(out_paths['log'],'a') as f:
+    with locks['m6anet.log'], open(out_paths['m6anet.log'],'a') as f:
+        f.write(log_str + '\n')
+
+def preprocess_gene_xpore_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,locks):  # todo
+    """
+    Convert transcriptomic to genomic coordinates for a gene.
+    
+    Parameters
+    ----------
+        gene_id: str
+            Transcript ID.
+        data_dict: {read_id:events_array}
+            Events for each read.
+        features: [str] # todo
+            A list of features to collect from the reads that are aligned to each genomic coordinate in the output.
+    Returns
+    -------
+    dict
+        A dict of all specified features collected for each genomic coordinate.
+    """
+    
+    # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx'] # columns in the eventalign file per read.
+
+    # Concatenate
+    if len(data_dict) == 0:
+        return
+    ##for xpore
+    xpore_events = []
+    xpore_genomic_coordinates = []
+    ##for m6anet
+    m6anet_features_arrays = []
+    m6anet_reference_kmer_arrays = [] 
+    m6anet_g_positions_arrays = []
+
+    for read_id,events_per_read in data_dict.items(): 
+        tx_ids = [tx_id for tx_id in events_per_read['transcript_id']]
+        tx_positions = events_per_read['transcriptomic_position']
+        genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- np structured array of 'chr','gene_id','genomic_position','kmer'
+        genomic_coordinate = np.array(genomic_coordinate,dtype=np.dtype([('chr','<U2'),('gene_id','<U15'),('genomic_position','<i4'),('g_kmer','<U5')]))
+        ##for xpore
+        events_per_read['transcript_id'] = tx_ids
+#        xpore_events_per_read = np.array(events_per_read,dtype=np.dtype([('transcript_id', 'S15'), ('read_id', '<i8'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8'), ('stdv', '<f8'), ('dwelltime', '<f8')]))
+        xpore_events += [events_per_read]
+        xpore_genomic_coordinates += [genomic_coordinate]
+        ##for m6anet
+        gene_ids = [gene_id for gene_id in genomic_coordinate['gene_id']]
+        genomic_positions = [genomic_position for genomic_position in genomic_coordinate['genomic_position']]
+        ## note the following changes transcript_id -> gene_id and transcriptomic_position -> genomic_position ##
+        events_per_read['transcript_id'] = gene_ids  ##convert the transcript_id field as gene_id
+        events_per_read['transcriptomic_position'] = genomic_positions ##convert the transcriptomic_position as genomic_position
+        events_per_read = filter_events(events_per_read, n_neighbors, M6A_KMERS)
+        for event_per_read in events_per_read:
+            m6anet_features_arrays.append(event_per_read[0])
+            m6anet_reference_kmer_arrays.append([combine_sequence(kmer) for kmer in event_per_read[1]])
+            m6anet_g_positions_arrays.append(event_per_read[3])
+
+    ##for xpore
+    xpore_events = np.concatenate(xpore_events)
+    xpore_genomic_coordinates = np.concatenate(xpore_genomic_coordinates)
+    ##for m6anet
+    if len(m6anet_features_arrays) == 0:
+        return
+    else:
+        m6anet_features_arrays = np.concatenate(m6anet_features_arrays)
+        m6anet_reference_kmer_arrays = np.concatenate(m6anet_reference_kmer_arrays)
+        m6anet_g_positions_arrays = np.concatenate(m6anet_g_positions_arrays)
+        assert(len(m6anet_features_arrays) == len(m6anet_reference_kmer_arrays) == len(m6anet_g_positions_arrays))
+
+    ##for xpore # Sort and split 
+    xpore_idx_sorted = np.argsort(xpore_genomic_coordinates['genomic_position'])
+    xpore_unique_positions, xpore_index = np.unique(xpore_genomic_coordinates['genomic_position'][xpore_idx_sorted],return_index = True)
+    xpore_y_arrays = np.split(xpore_events['norm_mean'][xpore_idx_sorted], xpore_index[1:])
+    xpore_g_kmer_arrays = np.split(xpore_genomic_coordinates['g_kmer'][xpore_idx_sorted], xpore_index[1:])
+    xpore_g_positions_arrays = np.split(xpore_genomic_coordinates['genomic_position'][xpore_idx_sorted], xpore_index[1:])
+
+    ##for m6anet # Sort and split
+    m6anet_idx_sorted = np.argsort(m6anet_g_positions_arrays)
+    m6anet_positions, m6anet_index = np.unique(m6anet_g_positions_arrays[m6anet_idx_sorted], return_index = True,axis=0) #'chr',
+    m6anet_features_arrays = np.split(m6anet_features_arrays[m6anet_idx_sorted], m6anet_index[1:])
+    m6anet_reference_kmer_arrays = np.split(m6anet_reference_kmer_arrays[m6anet_idx_sorted], m6anet_index[1:])
+
+    ##for xpore # Prepare
+    xpore_data = defaultdict(dict)
+    # for each position, make it ready for json dump
+    asserted = True
+    for position,y_array,g_kmer_array,g_positions_array in zip(xpore_unique_positions,xpore_y_arrays,xpore_g_kmer_arrays,xpore_g_positions_arrays):
+        if (len(set(g_kmer_array)) == 1) and ('XXXXX' in set(g_kmer_array)) or (len(y_array) == 0):
+            continue
+            
+        if 'XXXXX' in set(g_kmer_array):
+            y_array = y_array[g_kmer_array != 'XXXXX']  
+            assert len(y_array) == len(g_kmer_array) - (g_kmer_array=='XXXXX').sum()
+            g_kmer_array = g_kmer_array[g_kmer_array != 'XXXXX']  
+            
+        try:
+            assert len(set(g_kmer_array)) == 1
+            assert {position} == set(g_positions_array)
+        except:
+            asserted = False
+            break
+        kmer = set(g_kmer_array).pop()
+
+        xpore_data[position] = {kmer: list(y_array)} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
+
+    ##for m6anet # Prepare
+    m6anet_data = defaultdict(dict)
+    # for each position, make it ready for json dump
+    for position, features_array, reference_kmer_array in zip(m6anet_positions, m6anet_features_arrays, m6anet_reference_kmer_arrays):
+        kmer = set(reference_kmer_array)
+     #   assert(len(kmer) == 1) ##AssertionError rose
+        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(features_array) == 0):
+            continue
+
+        m6anet_data[int(position)] = {kmer.pop(): features_array.tolist()}
+
+    ##for xpore # write to file.
+    log_str = '%s: %s' %(gene_id,asserted)
+    with locks['xpore.json'], open(out_paths['xpore.json'],'a') as f:
+
+        pos_start = f.tell()
+        f.write('{')
+        f.write('"%s":' %gene_id)
+        ujson.dump(xpore_data, f)
+        f.write('}\n')
+        pos_end = f.tell()
+
+    with locks['xpore.index'], open(out_paths['xpore.index'],'a') as f:
+        f.write('%s,%d,%d\n' %(gene_id,pos_start,pos_end))
+        
+    with locks['xpore.readcount'], open(out_paths['xpore.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
+        n_reads = len(data_dict)
+        f.write('%s,%d\n' %(gene_id,n_reads))
+        
+    with locks['xpore.log'], open(out_paths['xpore.log'],'a') as f:
+        f.write(log_str + '\n')
+
+    ##for m6anet # write to file.
+    log_str = '%s: Data preparation ... Done.' %(gene_id)
+    with locks['m6anet.json'], open(out_paths['m6anet.json'],'a') as f, \
+            locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as g, \
+            locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as h:
+        
+        for pos, dat in m6anet_data.items():
+            pos_start = f.tell()
+            f.write('{')
+            f.write('"%s":{"%d":' %(gene_id,pos))
+            ujson.dump(dat, f)
+            f.write('}}\n')
+            pos_end = f.tell()
+        
+            # with locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as f:
+            g.write('%s,%d,%d,%d\n' %(gene_id,pos,pos_start,pos_end))
+        
+            # with locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
+            n_reads = 0
+            for kmer, features in dat.items():
+                n_reads += len(features)
+            h.write('%s,%d,%d\n' %(gene_id,pos,n_reads))
+        
+    with locks['m6anet.log'], open(out_paths['m6anet.log'],'a') as f:
         f.write(log_str + '\n')
 
 def parallel_preprocess_tx(program,eventalign_filepath,fun_dict,out_dir,n_processes,readcount_min,readcount_max,n_neighbors,resume):
@@ -1118,7 +1276,7 @@ def main():
 
     program = program.split(",")
     if len(program) == 2:
-        fun_dict={'combine':combine_m6anet,'preprocess_gene':preprocess_gene_xpore,'preprocess_tx':preprocess_tx_xpore_m6anet}
+        fun_dict={'combine':combine_m6anet,'preprocess_gene':preprocess_gene_xpore_m6anet,'preprocess_tx':preprocess_tx_xpore_m6anet}
     else:
         if program[0] == 'xpore':
             fun_dict={'combine':combine_xpore,'preprocess_gene':preprocess_gene_xpore,'preprocess_tx':preprocess_tx_xpore}
