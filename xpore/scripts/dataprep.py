@@ -353,6 +353,53 @@ def combine_m6anet(events_str):
     else:
         return np.array([])
 
+def writeOutputs_xpore(id,asserted,data,data_dict,locks,out_paths):
+    log_str = '%s: %s' %(id,asserted)
+    with locks['xpore.json'], open(out_paths['xpore.json'],'a') as f:
+
+        pos_start = f.tell()
+        f.write('{')
+        f.write('"%s":' %id)
+        ujson.dump(data, f)
+        f.write('}\n')
+        pos_end = f.tell()
+
+    with locks['xpore.index'], open(out_paths['xpore.index'],'a') as f:
+        f.write('%s,%d,%d\n' %(id,pos_start,pos_end))
+        
+    with locks['xpore.readcount'], open(out_paths['xpore.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
+        n_reads = len(data_dict)
+        f.write('%s,%d\n' %(id,n_reads))
+        
+    with locks['xpore.log'], open(out_paths['xpore.log'],'a') as f:
+        f.write(log_str + '\n')
+
+def writeOutputs_m6anet(id,data,locks,out_paths):
+    log_str = '%s: Data preparation ... Done.' %(id)
+    with locks['m6anet.json'], open(out_paths['m6anet.json'],'a') as f, \
+            locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as g, \
+            locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as h:
+        
+        for pos, dat in data.items():
+            pos_start = f.tell()
+            f.write('{')
+            f.write('"%s":{"%d":' %(id,pos))
+            ujson.dump(dat, f)
+            f.write('}}\n')
+            pos_end = f.tell()
+        
+            # with locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as f:
+            g.write('%s,%d,%d,%d\n' %(id,pos,pos_start,pos_end))
+        
+            # with locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
+            n_reads = 0
+            for kmer, features in dat.items():
+                n_reads += len(features)
+            h.write('%s,%d,%d\n' %(id,pos,n_reads))
+        
+    with locks['m6anet.log'], open(out_paths['m6anet.log'],'a') as f:
+        f.write(log_str + '\n')
+
 def parallel_preprocess_gene(program,eventalign_filepath,fasta_dict,gtf_dict,fun_dict,out_dir,n_processes,readcount_min,readcount_max,n_neighbors,resume):
     
     # Create output paths and locks.
@@ -460,7 +507,7 @@ def parallel_preprocess_gene(program,eventalign_filepath,fasta_dict,gtf_dict,fun
     for p in program:
         log_tag = p+'.log'
         with open(out_paths[log_tag],'a+') as f:
-            f.write('Total %d transcripts.\n' %len(gene_ids_processed))
+            f.write('Total %d genes.\n' %len(gene_ids_processed))
             f.write(helper.decor_message('successfully finished'))
 
 def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,locks):  
@@ -567,26 +614,7 @@ def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,lo
         data[position] = {kmer: list(y_array)} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
         
     # write to file.
-    log_str = '%s: %s' %(gene_id,asserted)
-
-    with locks['xpore.json'], open(out_paths['xpore.json'],'a') as f:
-
-        pos_start = f.tell()
-        f.write('{')
-        f.write('"%s":' %gene_id)
-        ujson.dump(data, f)
-        f.write('}\n')
-        pos_end = f.tell()
-
-    with locks['xpore.index'], open(out_paths['xpore.index'],'a') as f:
-        f.write('%s,%d,%d\n' %(gene_id,pos_start,pos_end))
-        
-    with locks['xpore.readcount'], open(out_paths['xpore.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
-        n_reads = len(data_dict)
-        f.write('%s,%d\n' %(gene_id,n_reads))
-        
-    with locks['xpore.log'], open(out_paths['xpore.log'],'a') as f:
-        f.write(log_str + '\n')
+    writeOutputs_xpore(gene_id,asserted,data,data_dict,locks,out_paths)
 
 def preprocess_gene_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,locks):  # todo
     """
@@ -662,30 +690,7 @@ def preprocess_gene_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,l
         data[int(position)] = {kmer.pop(): features_array.tolist()}
 
     # write to file.
-    log_str = '%s: Data preparation ... Done.' %(gene_id)
-    with locks['m6anet.json'], open(out_paths['m6anet.json'],'a') as f, \
-            locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as g, \
-            locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as h:
-        
-        for pos, dat in data.items():
-            pos_start = f.tell()
-            f.write('{')
-            f.write('"%s":{"%d":' %(gene_id,pos))
-            ujson.dump(dat, f)
-            f.write('}}\n')
-            pos_end = f.tell()
-        
-            # with locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as f:
-            g.write('%s,%d,%d,%d\n' %(gene_id,pos,pos_start,pos_end))
-        
-            # with locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
-            n_reads = 0
-            for kmer, features in dat.items():
-                n_reads += len(features)
-            h.write('%s,%d,%d\n' %(gene_id,pos,n_reads))
-        
-    with locks['m6anet.log'], open(out_paths['m6anet.log'],'a') as f:
-        f.write(log_str + '\n')
+    writeOutputs_m6anet(gene_id,data,locks,out_paths)
 
 def preprocess_gene_xpore_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,locks):  # todo
     """
@@ -800,51 +805,10 @@ def preprocess_gene_xpore_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_p
         m6anet_data[int(position)] = {kmer.pop(): features_array.tolist()}
 
     ##for xpore # write to file.
-    log_str = '%s: %s' %(gene_id,asserted)
-    with locks['xpore.json'], open(out_paths['xpore.json'],'a') as f:
-
-        pos_start = f.tell()
-        f.write('{')
-        f.write('"%s":' %gene_id)
-        ujson.dump(xpore_data, f)
-        f.write('}\n')
-        pos_end = f.tell()
-
-    with locks['xpore.index'], open(out_paths['xpore.index'],'a') as f:
-        f.write('%s,%d,%d\n' %(gene_id,pos_start,pos_end))
-        
-    with locks['xpore.readcount'], open(out_paths['xpore.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
-        n_reads = len(data_dict)
-        f.write('%s,%d\n' %(gene_id,n_reads))
-        
-    with locks['xpore.log'], open(out_paths['xpore.log'],'a') as f:
-        f.write(log_str + '\n')
+    writeOutputs_xpore(gene_id,asserted,xpore_data,data_dict,locks,out_paths)
 
     ##for m6anet # write to file.
-    log_str = '%s: Data preparation ... Done.' %(gene_id)
-    with locks['m6anet.json'], open(out_paths['m6anet.json'],'a') as f, \
-            locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as g, \
-            locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as h:
-        
-        for pos, dat in m6anet_data.items():
-            pos_start = f.tell()
-            f.write('{')
-            f.write('"%s":{"%d":' %(gene_id,pos))
-            ujson.dump(dat, f)
-            f.write('}}\n')
-            pos_end = f.tell()
-        
-            # with locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as f:
-            g.write('%s,%d,%d,%d\n' %(gene_id,pos,pos_start,pos_end))
-        
-            # with locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
-            n_reads = 0
-            for kmer, features in dat.items():
-                n_reads += len(features)
-            h.write('%s,%d,%d\n' %(gene_id,pos,n_reads))
-        
-    with locks['m6anet.log'], open(out_paths['m6anet.log'],'a') as f:
-        f.write(log_str + '\n')
+    writeOutputs_m6anet(gene_id,m6anet_data,locks,out_paths)
 
 def parallel_preprocess_tx(program,eventalign_filepath,fun_dict,out_dir,n_processes,readcount_min,readcount_max,n_neighbors,resume):
     
@@ -982,24 +946,7 @@ def preprocess_tx_xpore(tx_id,data_dict,n_neighbors,out_paths,locks):
         data[position] = {kmer: list(np.around(y_array,decimals=2))}
         
     # write to file.
-    log_str = '%s: %s.' %(tx_id,asserted)
-    with locks['xpore.json'], open(out_paths['xpore.json'],'a') as f:
-        pos_start = f.tell()
-        f.write('{')
-        f.write('"%s":' %tx_id)
-        ujson.dump(data, f)
-        f.write('}\n')
-        pos_end = f.tell()
-        
-    with locks['xpore.index'], open(out_paths['xpore.index'],'a') as f:
-        f.write('%s,%d,%d\n' %(tx_id,pos_start,pos_end))
-        
-    with locks['xpore.readcount'], open(out_paths['xpore.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
-        n_reads = len(data_dict)
-        f.write('%s,%d\n' %(tx_id,n_reads))
-        
-    with locks['xpore.log'], open(out_paths['xpore.log'],'a') as f:
-        f.write(log_str + '\n')
+    writeOutputs_xpore(tx_id,asserted,data,data_dict,locks,out_paths)
 
 def preprocess_tx_m6anet(tx_id,data_dict,n_neighbors,out_paths,locks):  # todo
     """
@@ -1066,30 +1013,7 @@ def preprocess_tx_m6anet(tx_id,data_dict,n_neighbors,out_paths,locks):  # todo
         data[int(position)] = {kmer.pop(): features_array.tolist()}
 
     # write to file.
-    log_str = '%s: Data preparation ... Done.' %(tx_id)
-    with locks['m6anet.json'], open(out_paths['m6anet.json'],'a') as f, \
-            locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as g, \
-            locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as h:
-        
-        for pos, dat in data.items():
-            pos_start = f.tell()
-            f.write('{')
-            f.write('"%s":{"%d":' %(tx_id,pos))
-            ujson.dump(dat, f)
-            f.write('}}\n')
-            pos_end = f.tell()
-        
-            # with locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as f:
-            g.write('%s,%d,%d,%d\n' %(tx_id,pos,pos_start,pos_end))
-        
-            # with locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
-            n_reads = 0
-            for kmer, features in dat.items():
-                n_reads += len(features)
-            h.write('%s,%d,%d\n' %(tx_id,pos,n_reads))
-        
-    with locks['m6anet.log'], open(out_paths['m6anet.log'],'a') as f:
-        f.write(log_str + '\n')        
+    writeOutputs_m6anet(tx_id,data,locks,out_paths)     
 
 def preprocess_tx_xpore_m6anet(tx_id,data_dict,n_neighbors,out_paths,locks):  # todo
     """
@@ -1184,50 +1108,10 @@ def preprocess_tx_xpore_m6anet(tx_id,data_dict,n_neighbors,out_paths,locks):  # 
         m6anet_data[int(position)] = {kmer.pop(): features_array.tolist()}
 
     ##for xpore # write to file.
-    log_str = '%s: %s.' %(tx_id,asserted)
-    with locks['xpore.json'], open(out_paths['xpore.json'],'a') as f:
-        pos_start = f.tell()
-        f.write('{')
-        f.write('"%s":' %tx_id)
-        ujson.dump(xpore_data, f)
-        f.write('}\n')
-        pos_end = f.tell()
-        
-    with locks['xpore.index'], open(out_paths['xpore.index'],'a') as f:
-        f.write('%s,%d,%d\n' %(tx_id,pos_start,pos_end))
-        
-    with locks['xpore.readcount'], open(out_paths['xpore.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
-        n_reads = len(data_dict)
-        f.write('%s,%d\n' %(tx_id,n_reads))
-        
-    with locks['xpore.log'], open(out_paths['xpore.log'],'a') as f:
-        f.write(log_str + '\n')
+    writeOutputs_xpore(tx_id,asserted,xpore_data,data_dict,locks,out_paths)
 
     ##for m6anet # write to file.
-    log_str = '%s: Data preparation ... Done.' %(tx_id)
-    with locks['m6anet.json'], open(out_paths['m6anet.json'],'a') as f, \
-            locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as g, \
-            locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as h:
-        
-        for pos, dat in m6anet_data.items():
-            pos_start = f.tell()
-            f.write('{')
-            f.write('"%s":{"%d":' %(tx_id,pos))
-            ujson.dump(dat, f)
-            f.write('}}\n')
-            pos_end = f.tell()
-        
-            # with locks['m6anet.index'], open(out_paths['m6anet.index'],'a') as f:
-            g.write('%s,%d,%d,%d\n' %(tx_id,pos,pos_start,pos_end))
-        
-            # with locks['m6anet.readcount'], open(out_paths['m6anet.readcount'],'a') as f: #todo: repeats no. of tx >> don't want it.
-            n_reads = 0
-            for kmer, features in dat.items():
-                n_reads += len(features)
-            h.write('%s,%d,%d\n' %(tx_id,pos,n_reads))
-        
-    with locks['m6anet.log'], open(out_paths['m6anet.log'],'a') as f:
-        f.write(log_str + '\n')  
+    writeOutputs_m6anet(tx_id,m6anet_data,locks,out_paths)
 
 # def index_nanopolish(eventalign_filepath,summary_filepath,out_dir,n_processes):
 #     with helper.EventalignFile(eventalign_filepath) as eventalign_file, open(summary_filepath,'r') as summary_file:
