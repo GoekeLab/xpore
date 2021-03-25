@@ -104,7 +104,6 @@ def combine_sequence(kmers):
         kmer += _kmer[-1]
     return kmer
 ########################################################################
-
 def index(eventalign_result,pos_start,out_paths,locks):
     eventalign_result = eventalign_result.set_index(['contig','read_index'])
     pos_end=pos_start
@@ -510,6 +509,68 @@ def parallel_preprocess_gene(program,eventalign_filepath,fasta_dict,gtf_dict,fun
             f.write('Total %d genes.\n' %len(gene_ids_processed))
             f.write(helper.decor_message('successfully finished'))
 
+def prepare_gene_xpore(xpore_events,xpore_genomic_coordinates):
+    xpore_events = np.concatenate(xpore_events)
+    xpore_genomic_coordinates = np.concatenate(xpore_genomic_coordinates)
+
+    # Sort and split 
+    xpore_idx_sorted = np.argsort(xpore_genomic_coordinates['genomic_position'])
+    xpore_unique_positions, xpore_index = np.unique(xpore_genomic_coordinates['genomic_position'][xpore_idx_sorted],return_index = True)
+    xpore_y_arrays = np.split(xpore_events['norm_mean'][xpore_idx_sorted], xpore_index[1:])
+    xpore_g_kmer_arrays = np.split(xpore_genomic_coordinates['g_kmer'][xpore_idx_sorted], xpore_index[1:])
+    xpore_g_positions_arrays = np.split(xpore_genomic_coordinates['genomic_position'][xpore_idx_sorted], xpore_index[1:])
+
+    # Prepare
+    xpore_data = defaultdict(dict)
+    # for each position, make it ready for json dump
+    asserted = True
+    for position,y_array,g_kmer_array,g_positions_array in zip(xpore_unique_positions,xpore_y_arrays,xpore_g_kmer_arrays,xpore_g_positions_arrays):
+        if (len(set(g_kmer_array)) == 1) and ('XXXXX' in set(g_kmer_array)) or (len(y_array) == 0):
+            continue
+            
+        if 'XXXXX' in set(g_kmer_array):
+            y_array = y_array[g_kmer_array != 'XXXXX']  
+            assert len(y_array) == len(g_kmer_array) - (g_kmer_array=='XXXXX').sum()
+            g_kmer_array = g_kmer_array[g_kmer_array != 'XXXXX']  
+            
+        try:
+            assert len(set(g_kmer_array)) == 1
+            assert {position} == set(g_positions_array)
+        except:
+            asserted = False
+            break
+        kmer = set(g_kmer_array).pop()
+
+        xpore_data[position] = {kmer: list(y_array)} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
+    return (xpore_data,asserted)
+
+def prepare_gene_m6anet(m6anet_features_arrays,m6anet_reference_kmer_arrays,m6anet_g_positions_arrays):
+    if len(m6anet_features_arrays) == 0:
+        return
+    else:
+        m6anet_features_arrays = np.concatenate(m6anet_features_arrays)
+        m6anet_reference_kmer_arrays = np.concatenate(m6anet_reference_kmer_arrays)
+        m6anet_g_positions_arrays = np.concatenate(m6anet_g_positions_arrays)
+        assert(len(m6anet_features_arrays) == len(m6anet_reference_kmer_arrays) == len(m6anet_g_positions_arrays))
+
+    # Sort and split
+    m6anet_idx_sorted = np.argsort(m6anet_g_positions_arrays)
+    m6anet_positions, m6anet_index = np.unique(m6anet_g_positions_arrays[m6anet_idx_sorted], return_index = True,axis=0) #'chr',
+    m6anet_features_arrays = np.split(m6anet_features_arrays[m6anet_idx_sorted], m6anet_index[1:])
+    m6anet_reference_kmer_arrays = np.split(m6anet_reference_kmer_arrays[m6anet_idx_sorted], m6anet_index[1:])
+
+    # Prepare
+    m6anet_data = defaultdict(dict)
+    # for each position, make it ready for json dump
+    for position, features_array, reference_kmer_array in zip(m6anet_positions, m6anet_features_arrays, m6anet_reference_kmer_arrays):
+        kmer = set(reference_kmer_array)
+     #   assert(len(kmer) == 1) ##AssertionError rose
+        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(features_array) == 0):
+            continue
+
+        m6anet_data[int(position)] = {kmer.pop(): features_array.tolist()}
+    return m6anet_data
+
 def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,locks):  
     """
     Convert transcriptomic to genomic coordinates for a gene.
@@ -535,25 +596,14 @@ def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,lo
     # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx'] # columns in the eventalign file per read.
 
     events = []
-#    condition_labels = []
-#    run_labels = []
-#    read_ids = []
     genomic_coordinates = []
-    
-    # Concatenate
-#     if len(data_dict) == 0:
-#         return
 
 
     for read_index,events_per_read in data_dict.items():
-#         if len(events_per_read) > 0:
-        # ===== transcript to gene coordinates ===== # TODO: to use gtf.
-#        tx_ids = [tx_id.decode('UTF-8').split('.')[0] for tx_id in events_per_read['transcript_id']]
         tx_ids = [tx_id for tx_id in events_per_read['transcript_id']] 
         tx_positions = events_per_read['transcriptomic_position']
         genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- np structured array of 'chr','gene_id','genomic_position','kmer'
         genomic_coordinate = np.array(genomic_coordinate,dtype=np.dtype([('chr','<U2'),('gene_id','<U15'),('genomic_position','<i4'),('g_kmer','<U5')]))
-        # ===== 
 
         # Based on Ensembl, remove transcript version.
 
@@ -568,51 +618,8 @@ def preprocess_gene_xpore(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,lo
 #         else:
 #             print(read_index,len(events_per_read))
 
-    events = np.concatenate(events)
-    genomic_coordinates = np.concatenate(genomic_coordinates)
-   
-    # Sort and split # 
-#     idx_sorted = np.lexsort((events['reference_kmer'],genomic_coordinates['genomic_position'],genomic_coordinates['gene_id']))
-#     key_tuples, index = np.unique(list(zip(genomic_coordinates['gene_id'][idx_sorted],genomic_coordinates['genomic_position'][idx_sorted],events['reference_kmer'][idx_sorted])),return_index = True,axis=0) #'chr',
-#     y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
-# #     read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
-#     g_kmer_arrays = np.split(genomic_coordinates['g_kmer'][idx_sorted], index[1:])
-
-    idx_sorted = np.argsort(genomic_coordinates['genomic_position'])
-    unique_positions, index = np.unique(genomic_coordinates['genomic_position'][idx_sorted],return_index = True)
-    y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
-    #     read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
-    g_kmer_arrays = np.split(genomic_coordinates['g_kmer'][idx_sorted], index[1:])
-    g_positions_arrays = np.split(genomic_coordinates['genomic_position'][idx_sorted], index[1:])
-
-    # Prepare
-    # print('Reformating the data for each genomic position ...')
-    data = defaultdict(dict)
-    # for each position, make it ready for json dump
-#     data = dict(zip(key_tuples, y_arrays))
-
-    asserted = True
-#     for key_tuple,y_array,g_kmer_array in zip(key_tuples,y_arrays,g_kmer_arrays):
-    for position,y_array,g_kmer_array,g_positions_array in zip(unique_positions,y_arrays,g_kmer_arrays,g_positions_arrays):
-#         gene_id,position,kmer = key_tuple            
-        if (len(set(g_kmer_array)) == 1) and ('XXXXX' in set(g_kmer_array)) or (len(y_array) == 0):
-            continue
-            
-        if 'XXXXX' in set(g_kmer_array):
-            y_array = y_array[g_kmer_array != 'XXXXX']  
-            assert len(y_array) == len(g_kmer_array) - (g_kmer_array=='XXXXX').sum()
-            g_kmer_array = g_kmer_array[g_kmer_array != 'XXXXX']  
-            
-        try:
-            assert len(set(g_kmer_array)) == 1
-            assert {position} == set(g_positions_array)
-        except:
-            asserted = False
-            break
-        kmer = set(g_kmer_array).pop()
-
-        data[position] = {kmer: list(y_array)} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
-        
+    #
+    data,asserted = prepare_gene_xpore(events,genomic_coordinates)
     # write to file.
     writeOutputs_xpore(gene_id,asserted,data,data_dict,locks,out_paths)
 
@@ -660,34 +667,8 @@ def preprocess_gene_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,l
             features_arrays.append(event_per_read[0])
             reference_kmer_arrays.append([combine_sequence(kmer) for kmer in event_per_read[1]])
             g_positions_arrays.append(event_per_read[3])
-
-    if len(features_arrays) == 0:
-        return
-    else:
-        features_arrays = np.concatenate(features_arrays)
-        reference_kmer_arrays = np.concatenate(reference_kmer_arrays)
-        g_positions_arrays = np.concatenate(g_positions_arrays)
-        assert(len(features_arrays) == len(reference_kmer_arrays) == len(g_positions_arrays))
-    # Sort and split
-
-    idx_sorted = np.argsort(g_positions_arrays)
-    positions, index = np.unique(g_positions_arrays[idx_sorted], return_index = True,axis=0) #'chr',
-    features_arrays = np.split(features_arrays[idx_sorted], index[1:])
-    reference_kmer_arrays = np.split(reference_kmer_arrays[idx_sorted], index[1:])
-
-    # Prepare
-    # print('Reformating the data for each genomic position ...')
-    data = defaultdict(dict)
-
-
-    # for each position, make it ready for json dump
-    for position, features_array, reference_kmer_array in zip(positions, features_arrays, reference_kmer_arrays):
-        kmer = set(reference_kmer_array)
-     #   assert(len(kmer) == 1) ##AssertionError rose
-        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(features_array) == 0):
-            continue
-
-        data[int(position)] = {kmer.pop(): features_array.tolist()}
+    #
+    data = prepare_gene_m6anet(features_arrays,reference_kmer_arrays,g_positions_arrays)
 
     # write to file.
     writeOutputs_m6anet(gene_id,data,locks,out_paths)
@@ -745,64 +726,11 @@ def preprocess_gene_xpore_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_p
             m6anet_reference_kmer_arrays.append([combine_sequence(kmer) for kmer in event_per_read[1]])
             m6anet_g_positions_arrays.append(event_per_read[3])
 
-    ##for xpore
-    xpore_events = np.concatenate(xpore_events)
-    xpore_genomic_coordinates = np.concatenate(xpore_genomic_coordinates)
-    ##for m6anet
-    if len(m6anet_features_arrays) == 0:
-        return
-    else:
-        m6anet_features_arrays = np.concatenate(m6anet_features_arrays)
-        m6anet_reference_kmer_arrays = np.concatenate(m6anet_reference_kmer_arrays)
-        m6anet_g_positions_arrays = np.concatenate(m6anet_g_positions_arrays)
-        assert(len(m6anet_features_arrays) == len(m6anet_reference_kmer_arrays) == len(m6anet_g_positions_arrays))
-
-    ##for xpore # Sort and split 
-    xpore_idx_sorted = np.argsort(xpore_genomic_coordinates['genomic_position'])
-    xpore_unique_positions, xpore_index = np.unique(xpore_genomic_coordinates['genomic_position'][xpore_idx_sorted],return_index = True)
-    xpore_y_arrays = np.split(xpore_events['norm_mean'][xpore_idx_sorted], xpore_index[1:])
-    xpore_g_kmer_arrays = np.split(xpore_genomic_coordinates['g_kmer'][xpore_idx_sorted], xpore_index[1:])
-    xpore_g_positions_arrays = np.split(xpore_genomic_coordinates['genomic_position'][xpore_idx_sorted], xpore_index[1:])
-
-    ##for m6anet # Sort and split
-    m6anet_idx_sorted = np.argsort(m6anet_g_positions_arrays)
-    m6anet_positions, m6anet_index = np.unique(m6anet_g_positions_arrays[m6anet_idx_sorted], return_index = True,axis=0) #'chr',
-    m6anet_features_arrays = np.split(m6anet_features_arrays[m6anet_idx_sorted], m6anet_index[1:])
-    m6anet_reference_kmer_arrays = np.split(m6anet_reference_kmer_arrays[m6anet_idx_sorted], m6anet_index[1:])
-
     ##for xpore # Prepare
-    xpore_data = defaultdict(dict)
-    # for each position, make it ready for json dump
-    asserted = True
-    for position,y_array,g_kmer_array,g_positions_array in zip(xpore_unique_positions,xpore_y_arrays,xpore_g_kmer_arrays,xpore_g_positions_arrays):
-        if (len(set(g_kmer_array)) == 1) and ('XXXXX' in set(g_kmer_array)) or (len(y_array) == 0):
-            continue
-            
-        if 'XXXXX' in set(g_kmer_array):
-            y_array = y_array[g_kmer_array != 'XXXXX']  
-            assert len(y_array) == len(g_kmer_array) - (g_kmer_array=='XXXXX').sum()
-            g_kmer_array = g_kmer_array[g_kmer_array != 'XXXXX']  
-            
-        try:
-            assert len(set(g_kmer_array)) == 1
-            assert {position} == set(g_positions_array)
-        except:
-            asserted = False
-            break
-        kmer = set(g_kmer_array).pop()
-
-        xpore_data[position] = {kmer: list(y_array)} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
+    xpore_data,asserted= prepare_gene_xpore(xpore_events,xpore_genomic_coordinates)
 
     ##for m6anet # Prepare
-    m6anet_data = defaultdict(dict)
-    # for each position, make it ready for json dump
-    for position, features_array, reference_kmer_array in zip(m6anet_positions, m6anet_features_arrays, m6anet_reference_kmer_arrays):
-        kmer = set(reference_kmer_array)
-     #   assert(len(kmer) == 1) ##AssertionError rose
-        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(features_array) == 0):
-            continue
-
-        m6anet_data[int(position)] = {kmer.pop(): features_array.tolist()}
+    m6anet_data = prepare_gene_m6anet(m6anet_features_arrays,m6anet_reference_kmer_arrays,m6anet_g_positions_arrays)
 
     ##for xpore # write to file.
     writeOutputs_xpore(gene_id,asserted,xpore_data,data_dict,locks,out_paths)
@@ -876,6 +804,60 @@ def parallel_preprocess_tx(program,eventalign_filepath,fun_dict,out_dir,n_proces
             f.write('Total %d transcripts.\n' %len(tx_ids_processed))
             f.write(helper.decor_message('successfully finished'))
 
+def prepare_tx_xpore(xpore_events):
+    xpore_events = np.concatenate(xpore_events)
+
+    # Sort and split 
+    xpore_idx_sorted = np.argsort(xpore_events['transcriptomic_position'])
+    xpore_unique_positions, xpore_index = np.unique(xpore_events['transcriptomic_position'][xpore_idx_sorted],return_index = True)
+    xpore_y_arrays = np.split(xpore_events['norm_mean'][xpore_idx_sorted], xpore_index[1:])
+    xpore_reference_kmer_arrays = np.split(xpore_events['reference_kmer'][xpore_idx_sorted], xpore_index[1:])
+
+    # Prepare
+    xpore_data = defaultdict(dict)
+    # for each position, make it ready for json dump
+    asserted = True
+    for position,y_array,reference_kmer_array in zip(xpore_unique_positions,xpore_y_arrays,xpore_reference_kmer_arrays):
+        position = int(position)
+        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(y_array) == 0):
+            continue
+        if 'XXXXX' in set(reference_kmer_array):
+            y_array = y_array[reference_kmer_array != 'XXXXX']  
+            assert len(y_array) == len(reference_kmer_array) - (reference_kmer_array=='XXXXX').sum()
+            reference_kmer_array = reference_kmer_array[reference_kmer_array != 'XXXXX']  
+        try:
+            assert len(set(reference_kmer_array)) == 1
+        except:
+            asserted = False
+            break
+        kmer = set(reference_kmer_array).pop()
+        xpore_data[position] = {kmer: list(np.around(y_array,decimals=2))}
+    return (xpore_data,asserted)
+
+def prepare_tx_m6anet(m6anet_features_arrays,m6anet_reference_kmer_arrays,m6anet_transcriptomic_positions_arrays):
+    if len(m6anet_features_arrays) == 0:
+        return
+    else:
+        m6anet_features_arrays = np.concatenate(m6anet_features_arrays)
+        m6anet_reference_kmer_arrays = np.concatenate(m6anet_reference_kmer_arrays)
+        m6anet_transcriptomic_positions_arrays = np.concatenate(m6anet_transcriptomic_positions_arrays)
+        assert(len(m6anet_features_arrays) == len(m6anet_reference_kmer_arrays) == len(m6anet_transcriptomic_positions_arrays))
+
+    m6anet_idx_sorted = np.argsort(m6anet_transcriptomic_positions_arrays)
+    m6anet_positions, m6anet_index = np.unique(m6anet_transcriptomic_positions_arrays[m6anet_idx_sorted], return_index = True,axis=0) #'chr',
+    m6anet_features_arrays = np.split(m6anet_features_arrays[m6anet_idx_sorted], m6anet_index[1:])
+    m6anet_reference_kmer_arrays = np.split(m6anet_reference_kmer_arrays[m6anet_idx_sorted], m6anet_index[1:])
+
+    m6anet_data = defaultdict(dict)
+    # for each position, make it ready for json dump
+    for position, features_array, reference_kmer_array in zip(m6anet_positions, m6anet_features_arrays, m6anet_reference_kmer_arrays):
+        kmer = set(reference_kmer_array)
+        assert(len(kmer) == 1)
+        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(features_array) == 0):
+            continue
+        m6anet_data[int(position)] = {kmer.pop(): features_array.tolist()}
+    return m6anet_data 
+
 def preprocess_tx_xpore(tx_id,data_dict,n_neighbors,out_paths,locks): 
     """
     Convert transcriptomic to genomic coordinates for a gene.
@@ -897,10 +879,6 @@ def preprocess_tx_xpore(tx_id,data_dict,n_neighbors,out_paths,locks):
     # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx'] # columns in the eventalign file per read.
 
     events = []
-#    condition_labels = []
-#    run_labels = []
-#    read_ids = []
-#    transcriptomic_coordinates = []
     
     # Concatenate
     if len(data_dict) == 0:
@@ -910,41 +888,8 @@ def preprocess_tx_xpore(tx_id,data_dict,n_neighbors,out_paths,locks):
         # print(read_id)
         events += [events_per_read]
         
-    events = np.concatenate(events)
-   
-    # Sort and split 
-    idx_sorted = np.argsort(events['transcriptomic_position'])
-    unique_positions, index = np.unique(events['transcriptomic_position'][idx_sorted],return_index = True)
-    y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
-#    read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
-    reference_kmer_arrays = np.split(events['reference_kmer'][idx_sorted], index[1:])
-
-    # Prepare
-    # print('Reformating the data for each genomic position ...')
-    data = defaultdict(dict)
-    # for each position, make it ready for json dump
-    asserted = True
-#     for key_tuple,y_array,reference_kmer_array in zip(key_tuples,y_arrays,reference_kmer_arrays):
-    for position,y_array,reference_kmer_array in zip(unique_positions,y_arrays,reference_kmer_arrays):
-        
-        position = int(position)
-        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(y_array) == 0):
-            continue
-            
-        if 'XXXXX' in set(reference_kmer_array):
-            y_array = y_array[reference_kmer_array != 'XXXXX']  
-            assert len(y_array) == len(reference_kmer_array) - (reference_kmer_array=='XXXXX').sum()
-            reference_kmer_array = reference_kmer_array[reference_kmer_array != 'XXXXX']  
-            
-        try:
-            assert len(set(reference_kmer_array)) == 1
-        except:
-            asserted = False
-            break
-        kmer = set(reference_kmer_array).pop()
-
-        data[position] = {kmer: list(np.around(y_array,decimals=2))}
-        
+    #
+    data,asserted = prepare_tx_xpore(events)
     # write to file.
     writeOutputs_xpore(tx_id,asserted,data,data_dict,locks,out_paths)
 
@@ -984,33 +929,8 @@ def preprocess_tx_m6anet(tx_id,data_dict,n_neighbors,out_paths,locks):  # todo
             reference_kmer_arrays.append([combine_sequence(kmer) for kmer in event_per_read[1]])
             transcriptomic_positions_arrays.append(event_per_read[3])
 
-    if len(features_arrays) == 0:
-        return
-    else:
-        features_arrays = np.concatenate(features_arrays)
-        reference_kmer_arrays = np.concatenate(reference_kmer_arrays)
-        transcriptomic_positions_arrays = np.concatenate(transcriptomic_positions_arrays)
-        assert(len(features_arrays) == len(reference_kmer_arrays) == len(transcriptomic_positions_arrays))
-    # Sort and split
-
-    idx_sorted = np.argsort(transcriptomic_positions_arrays)
-    positions, index = np.unique(transcriptomic_positions_arrays[idx_sorted], return_index = True,axis=0) #'chr',
-    features_arrays = np.split(features_arrays[idx_sorted], index[1:])
-    reference_kmer_arrays = np.split(reference_kmer_arrays[idx_sorted], index[1:])
-
     # Prepare
-    # print('Reformating the data for each genomic position ...')
-    data = defaultdict(dict)
-
-
-    # for each position, make it ready for json dump
-    for position, features_array, reference_kmer_array in zip(positions, features_arrays, reference_kmer_arrays):
-        kmer = set(reference_kmer_array)
-        assert(len(kmer) == 1)
-        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(features_array) == 0):
-            continue
-
-        data[int(position)] = {kmer.pop(): features_array.tolist()}
+    data = prepare_tx_m6anet(features_arrays,reference_kmer_arrays,transcriptomic_positions_arrays)
 
     # write to file.
     writeOutputs_m6anet(tx_id,data,locks,out_paths)     
@@ -1054,58 +974,12 @@ def preprocess_tx_xpore_m6anet(tx_id,data_dict,n_neighbors,out_paths,locks):  # 
             m6anet_features_arrays.append(event_per_read[0])
             m6anet_reference_kmer_arrays.append([combine_sequence(kmer) for kmer in event_per_read[1]])
             m6anet_transcriptomic_positions_arrays.append(event_per_read[3])
-    ##for xpore
-    xpore_events = np.concatenate(xpore_events)
-    ##for m6anet
-    if len(m6anet_features_arrays) == 0:
-        return
-    else:
-        m6anet_features_arrays = np.concatenate(m6anet_features_arrays)
-        m6anet_reference_kmer_arrays = np.concatenate(m6anet_reference_kmer_arrays)
-        m6anet_transcriptomic_positions_arrays = np.concatenate(m6anet_transcriptomic_positions_arrays)
-        assert(len(m6anet_features_arrays) == len(m6anet_reference_kmer_arrays) == len(m6anet_transcriptomic_positions_arrays))
-
-    ##for xpore # Sort and split 
-    xpore_idx_sorted = np.argsort(xpore_events['transcriptomic_position'])
-    xpore_unique_positions, xpore_index = np.unique(xpore_events['transcriptomic_position'][xpore_idx_sorted],return_index = True)
-    xpore_y_arrays = np.split(xpore_events['norm_mean'][xpore_idx_sorted], xpore_index[1:])
-    xpore_reference_kmer_arrays = np.split(xpore_events['reference_kmer'][xpore_idx_sorted], xpore_index[1:])
-
-    ##for m6anet # Sort and split
-    m6anet_idx_sorted = np.argsort(m6anet_transcriptomic_positions_arrays)
-    m6anet_positions, m6anet_index = np.unique(m6anet_transcriptomic_positions_arrays[m6anet_idx_sorted], return_index = True,axis=0) #'chr',
-    m6anet_features_arrays = np.split(m6anet_features_arrays[m6anet_idx_sorted], m6anet_index[1:])
-    m6anet_reference_kmer_arrays = np.split(m6anet_reference_kmer_arrays[m6anet_idx_sorted], m6anet_index[1:])
 
     ##for xpore # Prepare
-    xpore_data = defaultdict(dict)
-    # for each position, make it ready for json dump
-    asserted = True
-    for position,y_array,reference_kmer_array in zip(xpore_unique_positions,xpore_y_arrays,xpore_reference_kmer_arrays):
-        position = int(position)
-        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(y_array) == 0):
-            continue
-        if 'XXXXX' in set(reference_kmer_array):
-            y_array = y_array[reference_kmer_array != 'XXXXX']  
-            assert len(y_array) == len(reference_kmer_array) - (reference_kmer_array=='XXXXX').sum()
-            reference_kmer_array = reference_kmer_array[reference_kmer_array != 'XXXXX']  
-        try:
-            assert len(set(reference_kmer_array)) == 1
-        except:
-            asserted = False
-            break
-        kmer = set(reference_kmer_array).pop()
-        xpore_data[position] = {kmer: list(np.around(y_array,decimals=2))}
+    xpore_data,asserted = prepare_tx_xpore(xpore_events)
 
     ##for m6anet # Prepare
-    m6anet_data = defaultdict(dict)
-    # for each position, make it ready for json dump
-    for position, features_array, reference_kmer_array in zip(m6anet_positions, m6anet_features_arrays, m6anet_reference_kmer_arrays):
-        kmer = set(reference_kmer_array)
-        assert(len(kmer) == 1)
-        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(features_array) == 0):
-            continue
-        m6anet_data[int(position)] = {kmer.pop(): features_array.tolist()}
+    m6anet_data = prepare_tx_m6anet(m6anet_features_arrays,m6anet_reference_kmer_arrays,m6anet_transcriptomic_positions_arrays)
 
     ##for xpore # write to file.
     writeOutputs_xpore(tx_id,asserted,xpore_data,data_dict,locks,out_paths)
