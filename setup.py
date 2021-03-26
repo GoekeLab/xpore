@@ -14,7 +14,7 @@ setup(
     name=__pkg_name__,
     license="MIT",
     description='xpore is a python package for Nanopore data analysis of differential RNA modifications.',
-    version='v1.0.0',
+    version='v1.0',
     long_description=README,
     long_description_content_type='text/markdown',
     url='https://github.com/GoekeLab/xpore',
@@ -26,7 +26,6 @@ setup(
             'scipy>=1.4.1',
             'PyYAML',
             'h5py>=2.10.0',
-            'pyensembl>=1.8.5',
             'ujson>=4.0.1'
             ],
     python_requires=">=3.8",
