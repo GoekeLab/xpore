@@ -405,9 +405,10 @@ def parallel_preprocess_gene(program,eventalign_filepath,fasta_dict,gtf_dict,fun
     out_paths,locks = dict(),dict()
     gene_ids_done = []
     for p in program:
+        p_out_dir = out_dir+'/'+p+'/'
         for base_out_filetype in ['json','index','log','readcount']:
             out_filetype= p+"."+base_out_filetype ##out_filetype specific to either xpore or m6anet
-            out_paths[out_filetype] = os.path.join(out_dir,'data.%s' %out_filetype)
+            out_paths[out_filetype] = os.path.join(p_out_dir,'data.%s' %base_out_filetype)
             locks[out_filetype] = multiprocessing.Lock()
         json_tag,index_tag,readcount_tag,log_tag=p+'.json',p+'.index',p+'.readcount',p+'.log'
         if resume and os.path.exists(out_paths[index_tag]):
@@ -744,9 +745,10 @@ def parallel_preprocess_tx(program,eventalign_filepath,fun_dict,out_dir,n_proces
     out_paths,locks = dict(),dict()
     tx_ids_done = []
     for p in program:
+        p_out_dir = out_dir+'/'+p+'/'
         for base_out_filetype in ['json','index','log','readcount']:
             out_filetype= p+"."+base_out_filetype ##out_filetype specific to either xpore or m6anet
-            out_paths[out_filetype] = os.path.join(out_dir,'data.%s' %out_filetype)
+            out_paths[out_filetype] = os.path.join(p_out_dir,'data.%s' %base_out_filetype)
             locks[out_filetype] = multiprocessing.Lock()
         json_tag,index_tag,readcount_tag,log_tag=p+'.json',p+'.index',p+'.readcount',p+'.log'
         if resume and os.path.exists(out_paths[index_tag]):
@@ -1032,14 +1034,25 @@ def main():
     program = args.program
     n_neighbors = args.n_neighbors
 
+    misc.makedirs(out_dir) #todo: check every level.
+
     program = program.split(",")
     if len(program) == 2:
-        fun_dict={'combine':combine_m6anet,'preprocess_gene':preprocess_gene_xpore_m6anet,'preprocess_tx':preprocess_tx_xpore_m6anet}
+        if 'xpore' in program and 'm6anet' in program:
+            fun_dict={'combine':combine_m6anet,'preprocess_gene':preprocess_gene_xpore_m6anet,'preprocess_tx':preprocess_tx_xpore_m6anet}
+            misc.makedirs(out_dir+'/xpore') #todo: check every level.
+            misc.makedirs(out_dir+'/m6anet')
+        else:
+            print('Please specify xpore and/or m6anet')
     else:
         if program[0] == 'xpore':
             fun_dict={'combine':combine_xpore,'preprocess_gene':preprocess_gene_xpore,'preprocess_tx':preprocess_tx_xpore}
+            misc.makedirs(out_dir+'/xpore')
+        elif program[0] == 'm6anet':
+            fun_dict={'combine':combine_m6anet,'preprocess_gene':preprocess_gene_m6anet,'preprocess_tx':preprocess_tx_m6anet}
+            misc.makedirs(out_dir+'/m6anet')
         else:
-            fun_dict={'combine':combine_m6anet,'preprocess_gene':preprocess_gene_m6anet,'preprocess_tx':preprocess_tx_m6anet} 
+            print('Please specify xpore and/or m6anet')
 
     if genome and (None in [args.gtf_path_or_url,args.transcript_fasta_paths_or_urls]):
         print('please provide the following')
@@ -1048,8 +1061,6 @@ def main():
     else:
         gtf_path_or_url = args.gtf_path_or_url
         transcript_fasta_paths_or_urls = args.transcript_fasta_paths_or_urls
-        
-    misc.makedirs(out_dir) #todo: check every level.
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
     if not args.skip_eventalign_indexing:
