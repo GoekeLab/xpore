@@ -415,11 +415,18 @@ def parallel_preprocess_gene(program,eventalign_filepath,fasta_dict,gtf_dict,fun
             df_index = pd.read_csv(out_paths[index_tag],sep=',')
             gene_ids_done = list(df_index['transcript_id'].unique())
         else:
-            open(out_paths[json_tag],'w').close()
-            with open(out_paths[index_tag],'w') as f:
-                f.write('idx,start,end\n') # header
-            with open(out_paths[readcount_tag],'w') as f:
-                f.write('idx,n_reads\n') # header
+            if p == "xpore":
+                open(out_paths[json_tag],'w').close()
+                with open(out_paths[index_tag],'w') as f:
+                    f.write('idx,start,end\n') # header
+                with open(out_paths[readcount_tag],'w') as f:
+                    f.write('idx,n_reads\n') # header
+            elif p == "m6anet":
+                open(out_paths[json_tag],'w').close()
+                with open(out_paths[index_tag],'w') as f:
+                    f.write('transcript_id,transcript_position,start,end\n') # header
+                with open(out_paths[readcount_tag],'w') as f:
+                    f.write('transcript_id,transcript_position,n_reads\n') # header
             open(out_paths[log_tag],'w').close()
 
     # Create communication queues.
@@ -755,11 +762,18 @@ def parallel_preprocess_tx(program,eventalign_filepath,fun_dict,out_dir,n_proces
             df_index = pd.read_csv(out_paths[index_tag],sep=',')
             tx_ids_done = list(df_index['transcript_id'].unique())
         else:
-            open(out_paths[json_tag],'w').close()
-            with open(out_paths[index_tag],'w') as f:
-                f.write('idx,start,end\n') # header
-            with open(out_paths[readcount_tag],'w') as f:
-                f.write('idx,n_reads\n') # header
+            if p == "xpore":
+                open(out_paths[json_tag],'w').close()
+                with open(out_paths[index_tag],'w') as f:
+                    f.write('idx,start,end\n') # header
+                with open(out_paths[readcount_tag],'w') as f:
+                    f.write('idx,n_reads\n') # header
+            elif p == "m6anet":
+                open(out_paths[json_tag],'w').close()
+                with open(out_paths[index_tag],'w') as f:
+                    f.write('transcript_id,transcript_position,start,end\n') # header
+                with open(out_paths[readcount_tag],'w') as f:
+                    f.write('transcript_id,transcript_position,n_reads\n') # header
             open(out_paths[log_tag],'w').close()
 
     # Create communication queues.
