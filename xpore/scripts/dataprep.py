@@ -55,26 +55,28 @@ def partition_into_continuous_positions(arr, window_size=1):
     kmer_arr = arr["reference_kmer"].reshape(-1, 1)
     tx_pos_arr = arr["transcriptomic_position"]
     tx_id_arr = arr["transcript_id"]
+    g_pos_arr = arr["read_index"] ##only applicable for preprocess_gene_m6anet
 
     partitions = [list(map(itemgetter(0), g)) for k, g in groupby(enumerate(tx_pos_arr), 
                                                                   lambda x: x[0] - x[1])]
     return [(float_arr[partition],
-             kmer_arr[partition], tx_id_arr[partition], tx_pos_arr[partition]) 
+             kmer_arr[partition], tx_id_arr[partition], tx_pos_arr[partition], g_pos_arr[partition]) 
             for partition in partitions if len(partition) > 2 * window_size + 1]
 
 def filter_by_kmer(partition, kmers, window_size):
-    feature_arr, kmer_arr, tx_id_arr, tx_pos_arr = partition
+    feature_arr, kmer_arr, tx_id_arr, tx_pos_arr, g_pos_arr = partition
     kmers_5 = kmer_arr[:, (2 * window_size + 1) // 2]
     mask = np.isin(kmers_5, kmers)
     filtered_feature_arr = feature_arr[mask, :]
     filtered_kmer_arr = kmer_arr[mask, :]
     filtered_tx_pos_arr = tx_pos_arr[mask]
     filtered_tx_id_arr = tx_id_arr[mask]
+    filtered_g_pos_arr = g_pos_arr[mask]
 
     if len(filtered_kmer_arr) == 0:
         return []
     else:
-        return filtered_feature_arr, filtered_kmer_arr, filtered_tx_id_arr, filtered_tx_pos_arr
+        return filtered_feature_arr, filtered_kmer_arr, filtered_tx_id_arr, filtered_tx_pos_arr, filtered_g_pos_arr
 
 def filter_partitions(partitions, window_size, kmers):
     windowed_partition = [create_features(partition, window_size) for partition in partitions]
@@ -89,9 +91,9 @@ def roll(to_roll, window_size=1):
     return np.concatenate((prev, to_roll, nex), axis=1)[window_size: -window_size, :]
 
 def create_features(partition, window_size=1):
-    float_arr, kmer_arr, tx_id_arr, tx_pos_arr = partition
+    float_arr, kmer_arr, tx_id_arr, tx_pos_arr, g_pos_arr = partition
     return roll(float_arr, window_size), roll(kmer_arr, window_size), \
-        tx_id_arr[window_size: -window_size], tx_pos_arr[window_size: -window_size]
+        tx_id_arr[window_size: -window_size], tx_pos_arr[window_size: -window_size], g_pos_arr[window_size: -window_size]
 
 def filter_events(events, window_size, kmers):
     events = partition_into_continuous_positions(events)
@@ -669,12 +671,12 @@ def preprocess_gene_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_paths,l
         genomic_positions = [genomic_position for genomic_position in genomic_coordinate['genomic_position']]
         ## note the following changes transcript_id -> gene_id and transcriptomic_position -> genomic_position ##
         events_per_read['transcript_id'] = gene_ids  ##convert the transcript_id field as gene_id
-        events_per_read['transcriptomic_position'] = genomic_positions ##convert the transcriptomic_position as genomic_position
+        events_per_read['read_index'] = genomic_positions ##read_index isn't used so I store the genomic_positions here
         events_per_read = filter_events(events_per_read, n_neighbors, M6A_KMERS)
         for event_per_read in events_per_read:
             features_arrays.append(event_per_read[0])
             reference_kmer_arrays.append([combine_sequence(kmer) for kmer in event_per_read[1]])
-            g_positions_arrays.append(event_per_read[3])
+            g_positions_arrays.append(event_per_read[4])
     #
     data = prepare_gene_m6anet(features_arrays,reference_kmer_arrays,g_positions_arrays)
 
@@ -727,12 +729,12 @@ def preprocess_gene_xpore_m6anet(gene_id,data_dict,t2g_mapping,n_neighbors,out_p
         genomic_positions = [genomic_position for genomic_position in genomic_coordinate['genomic_position']]
         ## note the following changes transcript_id -> gene_id and transcriptomic_position -> genomic_position ##
         events_per_read['transcript_id'] = gene_ids  ##convert the transcript_id field as gene_id
-        events_per_read['transcriptomic_position'] = genomic_positions ##convert the transcriptomic_position as genomic_position
+        events_per_read['read_index'] = genomic_positions ##read_index isn't used so I store the genomic_positions here
         events_per_read = filter_events(events_per_read, n_neighbors, M6A_KMERS)
         for event_per_read in events_per_read:
             m6anet_features_arrays.append(event_per_read[0])
             m6anet_reference_kmer_arrays.append([combine_sequence(kmer) for kmer in event_per_read[1]])
-            m6anet_g_positions_arrays.append(event_per_read[3])
+            m6anet_g_positions_arrays.append(event_per_read[4])
 
     ##for xpore # Prepare
     xpore_data,asserted= prepare_gene_xpore(xpore_events,xpore_genomic_coordinates)
