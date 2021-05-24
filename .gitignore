@@ -133,4 +133,4 @@ dmypy.json
 .pyre/
 
 # DS store
-.DSstore
+.DS_Store
