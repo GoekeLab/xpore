@@ -26,6 +26,7 @@ def get_args():
     required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
     optional.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf file path or url.',type=str)
     optional.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript fasta paths or urls.',type=str)
+    optional.add_argument('--merge_transcript_id_version', dest='merge_transcript_id_version', help='required for GTF files with separate transcript_id and transcript_version fields (ex. Human and Mouse from Ensembl).',default=False,action='store_true')
 
     # Optional
     optional.add_argument('--skip_eventalign_indexing', dest='skip_eventalign_indexing', help='skip indexing the eventalign nanopolish output.',default=False,action='store_true')
@@ -164,7 +165,8 @@ def combine(events_str):
         eventalign_result.reset_index(inplace=True)
 
 
-        eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]    #### CHANGE MADE ####
+#        eventalign_result['transcript_id'] = [contig.split('.')[0] for contig in eventalign_result['contig']]    #### CHANGE MADE ####
+        eventalign_result['transcript_id'] = [contig for contig in eventalign_result['contig']]
         #eventalign_result['transcript_id'] = eventalign_result['contig']
 
         eventalign_result['transcriptomic_position'] = pd.to_numeric(eventalign_result['position']) + 2 # the middle position of 5-mers.
@@ -194,35 +196,36 @@ def readFasta(transcript_fasta_paths_or_urls):
     dict={}
     for entry in entries:
         entry=entry.split("\n")
-        id=entry[0].split(".")[0]
-        seq="".join(entry[1:])
-        dict[id]=seq
+#        id=entry[0].split(".")[0]
+        if len(entry[0].split()) > 0:
+            id=entry[0].split()[0]
+            seq="".join(entry[1:])
+            dict[id]=seq
     with open(transcript_fasta_paths_or_urls+'.pickle', 'wb') as fasta_pickle:
         pickle.dump(dict, fasta_pickle)
     return dict
 
 def readGTF(gtf_path_or_url):
     gtf=open(gtf_path_or_url,"r")
-    for i in range(5):
-        gtf.readline()
     dict={}
     for ln in gtf:
-        ln=ln.split("\t")
-        if ln[2] == "transcript" or ln[2] == "exon":
-            chr,type,start,end=ln[0],ln[2],int(ln[3]),int(ln[4])
-            tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
-            g_id=ln[-1].split('gene_id "')[1].split('";')[0]
-            if tx_id not in dict:
-                dict[tx_id]={'chr':chr,'g_id':g_id,'strand':ln[6]}
-                if type not in dict[tx_id]:
-                    if type == "transcript":
-                        dict[tx_id][type]=(start,end)
-            else:
-                if type == "exon":
+        if not ln.startswith("#"):
+            ln=ln.split("\t")
+            if ln[2] == "transcript" or ln[2] == "exon":
+                chr,type,start,end=ln[0],ln[2],int(ln[3]),int(ln[4])
+                tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
+                g_id=ln[-1].split('gene_id "')[1].split('";')[0]
+                if tx_id not in dict:
+                    dict[tx_id]={'chr':chr,'g_id':g_id,'strand':ln[6]}
                     if type not in dict[tx_id]:
-                        dict[tx_id][type]=[(start,end)]
-                    else:
-                        dict[tx_id][type].append((start,end))
+                        if type == "transcript":
+                            dict[tx_id][type]=(start,end)
+                else:
+                    if type == "exon":
+                        if type not in dict[tx_id]:
+                            dict[tx_id][type]=[(start,end)]
+                        else:
+                            dict[tx_id][type].append((start,end))
     #convert genomic positions to tx positions
     for id in dict:
         tx_pos,tx_start=[],0
@@ -271,7 +274,8 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_p
 #     gene_ids = set()
 
     df_eventalign_index = pd.read_csv(os.path.join(out_dir,'eventalign.index'))
-    df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
+#    df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
+    df_eventalign_index['transcript_id'] = [tx_id for tx_id in  df_eventalign_index['transcript_id']]
     df_eventalign_index.set_index('transcript_id',inplace=True)
     g2t_mapping = defaultdict(list)
 
@@ -654,7 +658,21 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):
 #                     assert row_eventalign['read_index'] == read_index 
 #                     eventalign_per_read = [row_eventalign]
 
-
+def mergeGTFtxIDversion(gtf_path_or_url,out_dir):
+    gtf=open(gtf_path_or_url,"r")
+    new_gtf_path=os.path.join(out_dir,'transcript_id_version_merged.gtf')
+    new_gtf=open(new_gtf_path,"w")
+    for ln in gtf:
+        if not ln.startswith("#"):
+            ln=ln.split("\t")
+            if ln[2] == "transcript" or ln[2] == "exon":
+                g_id=ln[-1].split('gene_id "')[1].split('";')[0]
+                g_ver=ln[-1].split('; gene_version "')[1].split('";')[0]
+                tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
+                tx_ver=ln[-1].split('; transcript_version "')[1].split('";')[0]
+                new_gtf.write('\t'.join(ln[:-1])+'\t'+'gene_id "'+g_id+'.'+g_ver+'"; transcript_id "'+tx_id+'.'+tx_ver+'";'+'\n')
+    new_gtf.close()
+    return new_gtf_path
 
 def main():
     args = get_args()
@@ -668,6 +686,7 @@ def main():
     readcount_max = args.readcount_max
     resume = args.resume
     genome = args.genome
+    merge_transcript_id_version = args.merge_transcript_id_version
 
     if genome and (None in [args.gtf_path_or_url,args.transcript_fasta_paths_or_urls]):
         print('please provide the following')
@@ -690,6 +709,8 @@ def main():
                 fasta_dict = pickle.load(fasta_pickle)
                 gtf_dict = pickle.load(gtf_pickle)
         else:
+            if merge_transcript_id_version:
+                gtf_path_or_url = mergeGTFtxIDversion(gtf_path_or_url,out_dir)
             fasta_dict = readFasta(transcript_fasta_paths_or_urls)
             gtf_dict = readGTF(gtf_path_or_url)
         parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume)
