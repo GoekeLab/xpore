@@ -26,7 +26,6 @@ def get_args():
     required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
     optional.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf file path or url.',type=str)
     optional.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript fasta paths or urls.',type=str)
-    optional.add_argument('--merge_transcript_id_version', dest='merge_transcript_id_version', help='required for GTF files with separate transcript_id and transcript_version fields (ex. Human and Mouse from Ensembl).',default=False,action='store_true')
 
     # Optional
     optional.add_argument('--skip_eventalign_indexing', dest='skip_eventalign_indexing', help='skip indexing the eventalign nanopolish output.',default=False,action='store_true')
@@ -201,8 +200,6 @@ def readFasta(transcript_fasta_paths_or_urls):
             id=entry[0].split()[0]
             seq="".join(entry[1:])
             dict[id]=seq
-    with open(transcript_fasta_paths_or_urls+'.pickle', 'wb') as fasta_pickle:
-        pickle.dump(dict, fasta_pickle)
     return dict
 
 def readGTF(gtf_path_or_url):
@@ -234,8 +231,6 @@ def readGTF(gtf_path_or_url):
             tx_pos.append((tx_start,tx_end))
             tx_start=tx_end+1
         dict[id]['tx_exon']=tx_pos
-    with open(gtf_path_or_url+'.pickle', 'wb') as gtf_pickle:
-        pickle.dump(dict, gtf_pickle)
     return dict
 
 def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume):
@@ -658,6 +653,22 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):
 #                     assert row_eventalign['read_index'] == read_index 
 #                     eventalign_per_read = [row_eventalign]
 
+def check_gene_tx_id_version(gtf_path_or_url):
+    gtf=open(gtf_path_or_url,"r")
+    extra_version_fields=0
+    for i in range(25):
+        ln=gtf.readline().split('\t')
+        if not ln[0].startswith('#'):
+            if ln[2] == "transcript" or ln[2] == "exon":
+                check_transcript_version = len(ln[-1].split('transcript_version')) == 2
+                check_gene_version = len(ln[-1].split('gene_version')) == 2
+                if check_transcript_version and check_gene_version:
+                   extra_version_fields+=1
+    if extra_version_fields > 0:
+        return True
+    else:
+        return False
+ 
 def mergeGTFtxIDversion(gtf_path_or_url,out_dir):
     gtf=open(gtf_path_or_url,"r")
     new_gtf_path=os.path.join(out_dir,'transcript_id_version_merged.gtf')
@@ -686,7 +697,6 @@ def main():
     readcount_max = args.readcount_max
     resume = args.resume
     genome = args.genome
-    merge_transcript_id_version = args.merge_transcript_id_version
 
     if genome and (None in [args.gtf_path_or_url,args.transcript_fasta_paths_or_urls]):
         print('please provide the following')
@@ -704,17 +714,12 @@ def main():
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
-        if os.path.exists(transcript_fasta_paths_or_urls+'.pickle') and os.path.exists(gtf_path_or_url+'.pickle'):
-            with open(transcript_fasta_paths_or_urls+'.pickle','rb') as fasta_pickle, open(gtf_path_or_url+'.pickle','rb') as gtf_pickle:
-                fasta_dict = pickle.load(fasta_pickle)
-                gtf_dict = pickle.load(gtf_pickle)
-        else:
-            if merge_transcript_id_version:
-                gtf_path_or_url = mergeGTFtxIDversion(gtf_path_or_url,out_dir)
-            fasta_dict = readFasta(transcript_fasta_paths_or_urls)
-            gtf_dict = readGTF(gtf_path_or_url)
+        merge_transcript_id_version = check_gene_tx_id_version(gtf_path_or_url)
+        if merge_transcript_id_version:
+            gtf_path_or_url = mergeGTFtxIDversion(gtf_path_or_url,out_dir)
+        fasta_dict = readFasta(transcript_fasta_paths_or_urls)
+        gtf_dict = readGTF(gtf_path_or_url)
         parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume)
-
     else:
         parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume)
 
