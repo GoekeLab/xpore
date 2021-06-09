@@ -440,6 +440,7 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
             
         try:
             assert len(set(g_kmer_array)) == 1
+            assert list(set(g_kmer_array))[0].count('N') == 0 ##to weed out the mapped kmers from tx_seq that contain 'N', which is not in diffmod's model_kmer
             assert {position} == set(g_positions_array)
         except:
             asserted = False
