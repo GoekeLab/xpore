@@ -6,7 +6,6 @@ import multiprocessing
 import h5py
 import csv
 import ujson
-import pickle
 from operator import itemgetter
 from collections import defaultdict
 from io import StringIO
@@ -22,7 +21,7 @@ def get_args():
 
     # Required arguments
     required.add_argument('--eventalign', dest='eventalign', help='eventalign filepath, the output from nanopolish.',required=True)
-    required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
+    ##required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
     required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
     optional.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf file path or url.',type=str)
     optional.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript fasta paths or urls.',type=str)
@@ -55,7 +54,7 @@ def index(eventalign_result,pos_start,out_paths,locks):
                 pass
             pos_start = pos_end
 
-def parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume):
+def parallel_index(eventalign_filepath,chunk_size,out_dir,n_processes,resume):
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
     for out_filetype in ['index']:
@@ -270,7 +269,7 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_p
 
     df_eventalign_index = pd.read_csv(os.path.join(out_dir,'eventalign.index'))
 #    df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
-    df_eventalign_index['transcript_id'] = [tx_id for tx_id in  df_eventalign_index['transcript_id']]
+#    df_eventalign_index['transcript_id'] = [tx_id for tx_id in  df_eventalign_index['transcript_id']]
     df_eventalign_index.set_index('transcript_id',inplace=True)
     g2t_mapping = defaultdict(list)
 
@@ -505,7 +504,7 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
     tx_ids_processed = []
     df_eventalign_index = pd.read_csv(os.path.join(out_dir,'eventalign.index'))
 #    df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
-    df_eventalign_index['transcript_id'] = [tx_id for tx_id in  df_eventalign_index['transcript_id']]
+#    df_eventalign_index['transcript_id'] = [tx_id for tx_id in  df_eventalign_index['transcript_id']]
     tx_ids = df_eventalign_index['transcript_id'].values.tolist()
     tx_ids = list(dict.fromkeys(tx_ids))
     df_eventalign_index.set_index('transcript_id',inplace=True)
@@ -692,7 +691,6 @@ def main():
     #
     n_processes = args.n_processes        
     eventalign_filepath = args.eventalign
-    summary_filepath = args.summary
     chunk_size = args.chunk_size
     out_dir = args.out_dir
     readcount_min = args.readcount_min    
@@ -712,7 +710,7 @@ def main():
     
     # (1) For each read, combine multiple events aligned to the same positions, the results from nanopolish eventalign, into a single event per position.
     if not args.skip_eventalign_indexing:
-        parallel_index(eventalign_filepath,summary_filepath,chunk_size,out_dir,n_processes,resume)
+        parallel_index(eventalign_filepath,chunk_size,out_dir,n_processes,resume)
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
