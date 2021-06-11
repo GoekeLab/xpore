@@ -26,6 +26,7 @@ Contents
    outputtable
    configuration
    preparation
+   data
    scripts
 
 Contacts
