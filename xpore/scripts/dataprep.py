@@ -276,7 +276,8 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_p
     for tx_id in set(df_eventalign_index.index):
         try:
 ##           g_id = ensembl.transcript_by_id(tx_id).gene_id 
-            g_id = gtf_dict[tx_id]['g_id'] 
+            if tx_id in gtf_dict:
+                g_id = gtf_dict[tx_id]['g_id'] 
         except ValueError:
             continue
         else:
@@ -719,6 +720,7 @@ def main():
             gtf_path_or_url = mergeGTFtxIDversion(gtf_path_or_url,out_dir)
         fasta_dict = readFasta(transcript_fasta_paths_or_urls)
         gtf_dict = readGTF(gtf_path_or_url)
+        print(len(gtf_dict))
         parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume)
     else:
         parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume)
