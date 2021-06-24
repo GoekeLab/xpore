@@ -720,7 +720,7 @@ def main():
             gtf_path_or_url = mergeGTFtxIDversion(gtf_path_or_url,out_dir)
         fasta_dict = readFasta(transcript_fasta_paths_or_urls)
         gtf_dict = readGTF(gtf_path_or_url)
-        print(len(gtf_dict))
+        print(eventalign_filepath)
         parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume)
     else:
         parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume)

@@ -70,61 +70,41 @@ def _checkDiffmodPval(test_run_out_path,expected_out_path):
     else:
         return False
 
-@pytest.mark.parametrize("test_inputKO,test_inputWT,type",
-[('HEK293T-METTL3-KO-rep1_eventalign.txt','HEK293T-WT-rep1_eventalign.txt','transcript')])
-def test_transcriptome_alignment(test_inputKO,test_inputWT,type,tmpdir):
-    eventalign_KO=os.path.join(os.path.dirname(__file__),'test_data',test_inputKO)
-    eventalign_WT=os.path.join(os.path.dirname(__file__),'test_data',test_inputWT)
-    outdir=str(tmpdir)
-
-    ## run xpore-dataprep for each sample
-    dataprepKO_args = ['xpore-dataprep',
-                       '--eventalign', eventalign_KO,
-                       '--out_dir', os.path.join(outdir,'dataprepKO_'+type)]
-    subprocess.run(' '.join(dataprepKO_args), shell=True, check=True)
-
-    dataprepWT_args = ['xpore-dataprep',
-                       '--eventalign', eventalign_WT,
-                       '--out_dir', os.path.join(outdir,'dataprepWT_'+type)]
-    subprocess.run(' '.join(dataprepWT_args), shell=True, check=True)
-
-    ## run diffmod
-    config_yml_path = _create_diffmod_config(outdir,type)
-    diffmod_args = ['xpore-diffmod',
-                    '--config', config_yml_path]
-    subprocess.run(' '.join(diffmod_args), shell=True, check=True)
-
-    ## check diffmod output
-    test_run_out_path = os.path.join(outdir,'diffmod_'+type,'diffmod.table')
-    expected_out_path = os.path.join(os.path.dirname(__file__),'expected_outputs',type+'_diffmod_1_0.table')
-    diffmod_check = _checkDiffmodPval(test_run_out_path,expected_out_path)
-    assert(diffmod_check == True)
-
-@pytest.mark.parametrize("test_inputKO,test_inputWT,type",
-[('HEK293T-METTL3-KO-rep1_eventalign.txt','HEK293T-WT-rep1_eventalign.txt','gene')])
-def test_genome_alignment(test_inputKO,test_inputWT,type,tmpdir):
-    eventalign_KO=os.path.join(os.path.dirname(__file__),'test_data',test_inputKO)
-    eventalign_WT=os.path.join(os.path.dirname(__file__),'test_data',test_inputWT)
+@pytest.mark.parametrize("type",['transcript','gene'])
+def test_xpore(type,tmpdir):
+    eventalign_KO=os.path.join(os.path.dirname(__file__),'test_data','HEK293T-METTL3-KO-rep1_eventalign.txt')
+    eventalign_WT=os.path.join(os.path.dirname(__file__),'test_data','HEK293T-WT-rep1_eventalign.txt')
     fasta=os.path.join(os.path.dirname(__file__),'test_data','reference','modification_transcriptome_subset.fa')
     gtf=os.path.join(os.path.dirname(__file__),'test_data','reference','modification_transcriptome_subset.gtf')
+
     outdir=str(tmpdir)
-
     ## run xpore-dataprep for each sample
-    dataprepKO_args = ['xpore-dataprep',
-                       '--eventalign', eventalign_KO,
-                       '--out_dir', os.path.join(outdir,'dataprepKO_'+type),
-                       '--genome',
-                       '--gtf_path_or_url', gtf,
-                       '--transcript_fasta_paths_or_urls', fasta]
-    subprocess.run(' '.join(dataprepKO_args), shell=True, check=True)
+    if type == 'transcript':
+        dataprepKO_args = ['xpore-dataprep',
+                           '--eventalign', eventalign_KO,
+                           '--out_dir', os.path.join(outdir,'dataprepKO_'+type)]
+        subprocess.run(' '.join(dataprepKO_args), shell=True, check=True)
 
-    dataprepWT_args = ['xpore-dataprep',
-                       '--eventalign', eventalign_WT,
-                       '--out_dir', os.path.join(outdir,'dataprepWT_'+type), 
-                       '--genome',
-                       '--gtf_path_or_url', gtf,  
-                       '--transcript_fasta_paths_or_urls', fasta]
-    subprocess.run(' '.join(dataprepWT_args), shell=True, check=True)
+        dataprepWT_args = ['xpore-dataprep',
+                           '--eventalign', eventalign_WT,
+                           '--out_dir', os.path.join(outdir,'dataprepWT_'+type)]
+        subprocess.run(' '.join(dataprepWT_args), shell=True, check=True)
+    elif type == 'gene':
+        dataprepKO_args = ['xpore-dataprep',
+                           '--eventalign', eventalign_KO,
+                           '--out_dir', os.path.join(outdir,'dataprepKO_'+type),
+                           '--genome',
+                           '--gtf_path_or_url', gtf,
+                           '--transcript_fasta_paths_or_urls', fasta]
+        subprocess.run(' '.join(dataprepKO_args), shell=True, check=True)
+
+        dataprepWT_args = ['xpore-dataprep',
+                           '--eventalign', eventalign_WT,
+                           '--out_dir', os.path.join(outdir,'dataprepWT_'+type),
+                           '--genome',
+                           '--gtf_path_or_url', gtf,
+                           '--transcript_fasta_paths_or_urls', fasta]
+        subprocess.run(' '.join(dataprepWT_args), shell=True, check=True)
 
     ## run diffmod
     config_yml_path = _create_diffmod_config(outdir,type)
