@@ -276,9 +276,8 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_p
     for tx_id in set(df_eventalign_index.index):
         try:
 ##           g_id = ensembl.transcript_by_id(tx_id).gene_id 
-            if tx_id in gtf_dict:
-                g_id = gtf_dict[tx_id]['g_id'] 
-        except ValueError:
+            g_id = gtf_dict[tx_id]['g_id'] 
+        except KeyError:
             continue
         else:
 #             gene_ids = gene_ids.union([g_id])
