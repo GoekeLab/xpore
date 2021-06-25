@@ -43,4 +43,6 @@ setup(
         'Topic :: Scientific/Engineering :: Bio-Informatics',
         'Intended Audience :: Science/Research',
     ],
+    test_suite='tests',
+    tests_require=['pytest'],
 )
