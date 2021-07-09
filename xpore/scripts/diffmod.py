@@ -26,7 +26,7 @@ def get_args():
     optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int,default=1)
     optional.add_argument('--save_models', dest='save_models', help='with this argument, the program will save the model parameters for each id.',default=False,action='store_true') # todo
     optional.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') 
-    
+    optional.add_argument('--post_processing', dest='post_processing', help='with this argument, post-processing steps indicated on https://xpore.readthedocs.io/en/latest/quickstart.html will be performed',default=False,action='store_true')    
     optional.add_argument('--ids', dest='ids', help='gene / transcript ids to model.',default=[],nargs='*')
 
     parser._action_groups.append(optional)
@@ -95,6 +95,37 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
     # Logging
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(idx + '\n')
+
+def postProcessing(diffmod_table_path):
+    file=open(diffmod_table_path,"r")
+    file=file.readlines()
+    outfile=open("majority_direction_kmer_diffmod.table","w")
+    outfile.write(file[0])
+    header=file[0].split(',')
+    kmer_ind,dir_ind=header.index('kmer'),header.index('mod_assignment')    
+    dict={}
+    for ln in file[1:]:
+        l=ln.strip().split(",")
+        if l[kmer_ind] not in dict:
+            dict[l[kmer_ind]]={l[dir_ind]:1}
+        else:
+            if l[dir_ind] not in dict[l[kmer_ind]]:
+                dict[l[kmer_ind]][l[dir_ind]]=1
+            else:
+                dict[l[kmer_ind]][l[dir_ind]]+=1
+    for k in dict:
+        if len(dict[k]) > 1:
+            if dict[k]['higher'] < dict[k]['lower']:
+                dict[k]['choose']='lower'
+            else:
+                dict[k]['choose']='higher'
+        else:
+            dict[k]['choose']=list(dict[k].keys())[0]
+    for ln in file[1:]:
+        l=ln.strip().split(",")
+        if l[dir_ind] == dict[l[kmer_ind]]['choose']:
+            outfile.write(ln)
+    outfile.close()
                         
 def main():
     args = get_args()
@@ -103,6 +134,7 @@ def main():
     config_filepath = args.config
     save_models = args.save_models
     resume = args.resume
+    post_processing=args.post_processing
     ids = args.ids
 
     config = Configurator(config_filepath) 
@@ -205,16 +237,18 @@ def main():
     # Close data files
     for f in f_data.values():
         f.close()   
-        
+
     with open(out_paths['log'],'a+') as f:
         f.write(helper.decor_message('successfully finished'))
-        
+
+    if post_processing:
+        postProcessing(out_paths['table'])
 
 if __name__ == '__main__':
     """
     Usage:
         xpore-diffmod --config CONFIG [--n_processes N_PROCESSES] \
-                     [--save_models] [--resume] \
+                     [--save_models] [--resume] [--post_processing] \
                      [--ids [IDS [IDS ...]]]
     """
     main()
