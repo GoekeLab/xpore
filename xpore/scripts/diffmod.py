@@ -96,16 +96,19 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(idx + '\n')
 
-def postProcessing(diffmod_table_path):
+def postProcessing(diffmod_table_path,out_dir):
     file=open(diffmod_table_path,"r")
-    file=file.readlines()
-    outfile=open("majority_direction_kmer_diffmod.table","w")
-    outfile.write(file[0])
-    header=file[0].split(',')
+    header=file.readline()
+    entries=[(ln,float(ln.split(',')[4])) for ln in file.readlines()]
+    entries=sorted(entries, key=lambda tup: tup[1]) ##rank by pval_condition1_vs_condition2
+    outfile_path=os.path.join(out_dir,"majority_direction_kmer_diffmod.table")
+    outfile=open(outfile_path,"w")
+    outfile.write(header)
+    header=header.strip().split(',')
     kmer_ind,dir_ind=header.index('kmer'),header.index('mod_assignment')    
     dict={}
-    for ln in file[1:]:
-        l=ln.strip().split(",")
+    for ln in entries:
+        l=ln[0].strip().split(",")
         if l[kmer_ind] not in dict:
             dict[l[kmer_ind]]={l[dir_ind]:1}
         else:
@@ -114,17 +117,17 @@ def postProcessing(diffmod_table_path):
             else:
                 dict[l[kmer_ind]][l[dir_ind]]+=1
     for k in dict:
-        if len(dict[k]) > 1:
-            if dict[k]['higher'] < dict[k]['lower']:
+        if len(dict[k]) > 1:  ##consider one modification type per k-mer
+            if dict[k]['higher'] <= dict[k]['lower']: ##choose the majority
                 dict[k]['choose']='lower'
             else:
                 dict[k]['choose']='higher'
         else:
             dict[k]['choose']=list(dict[k].keys())[0]
-    for ln in file[1:]:
-        l=ln.strip().split(",")
+    for ln in entries:
+        l=ln[0].strip().split(",")
         if l[dir_ind] == dict[l[kmer_ind]]['choose']:
-            outfile.write(ln)
+            outfile.write(ln[0])
     outfile.close()
                         
 def main():
@@ -242,7 +245,7 @@ def main():
         f.write(helper.decor_message('successfully finished'))
 
     if post_processing:
-        postProcessing(out_paths['table'])
+        postProcessing(out_paths['table'],paths['out_dir'])
 
 if __name__ == '__main__':
     """
