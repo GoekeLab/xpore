@@ -99,8 +99,7 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
 def postProcessing(diffmod_table_path,out_dir):
     file=open(diffmod_table_path,"r")
     header=file.readline()
-    entries=[(ln,float(ln.split(',')[4])) for ln in file.readlines()]
-    entries=sorted(entries, key=lambda tup: tup[1]) ##rank by pval_condition1_vs_condition2
+    entries=file.readlines()
     outfile_path=os.path.join(out_dir,"majority_direction_kmer_diffmod.table")
     outfile=open(outfile_path,"w")
     outfile.write(header)
@@ -108,7 +107,7 @@ def postProcessing(diffmod_table_path,out_dir):
     kmer_ind,dir_ind=header.index('kmer'),header.index('mod_assignment')    
     dict={}
     for ln in entries:
-        l=ln[0].strip().split(",")
+        l=ln.strip().split(",")
         if l[kmer_ind] not in dict:
             dict[l[kmer_ind]]={l[dir_ind]:1}
         else:
@@ -125,9 +124,9 @@ def postProcessing(diffmod_table_path,out_dir):
         else:
             dict[k]['choose']=list(dict[k].keys())[0]
     for ln in entries:
-        l=ln[0].strip().split(",")
+        l=ln.strip().split(",")
         if l[dir_ind] == dict[l[kmer_ind]]['choose']:
-            outfile.write(ln[0])
+            outfile.write(ln)
     outfile.close()
                         
 def main():
