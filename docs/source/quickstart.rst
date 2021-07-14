@@ -15,6 +15,8 @@ After extraction, you will find::
     |-- data
         |-- HEK293T-METTL3-KO-rep1  # dataset dir
         |-- HEK293T-WT-rep1 # dataset dir
+    |-- demo.gtf
+    |-- demo.fa
 
 Each dataset under the ``data`` directory contains the following directories:
 
@@ -28,7 +30,8 @@ Each dataset under the ``data`` directory contains the following directories:
     # Within each dataset directory i.e. demo/data/HEK293T-METTL3-KO-rep1 and demo/data/HEK293T-WT-rep1, run
     xpore-dataprep \
     --eventalign nanopolish/eventalign.txt \
-    --summary nanopolish/summary.txt \
+    --gtf_path_or_url demo.gtf \
+    --transcript_fasta_paths_or_urls demo.fa \
     --out_dir dataprep \
     --genome  
 
@@ -82,9 +85,17 @@ We can rank the significantly differentially modified sites based on ``pval_HEK2
     ENSG00000159111   47824137  GGACA               -0.604056   7.614675e-24        -10.068479  ...      7.164075    4.257725       0.553929     0.353160           lower  2.294337e-10
     ENSG00000114125  141745249  GGACT               -0.514980   2.779122e-19         -8.977134  ...      5.215243   20.598471       0.954968     0.347174           lower  1.304111e-06
 
-**Notes:** We can consider only one modification type per k-mer by finding the majority ``mod_assignment`` of each k-mer. 
+4. (Optional) We can consider only one modification type per k-mer by finding the majority ``mod_assignment`` of each k-mer. 
 For example, the majority of the modification means of ``GGACT`` (``mu_mod``) is lower than the non-modification counterpart (``mu_unmod``). 
 This can be achieved by simply running ``groupby`` on the ``kmer`` and ``mod_assignment`` columns in Python.
 We can then remove those positions with the ``mod_assigment`` not in line with the majority in order to restrict ourselves with one modification type per kmer in the analysis.
 You can find more details in our paper.
+This can be done by running ``xpore-postprocessing``.
+
+::
+
+    xpore-postprocessing --diffmod_dir out
+
+With this command, we will get the final file in which only kmers with their ``mod_assignment`` different from the majority assigment of the corresponding kmer are removed. The output file ``majority_direction_kmer_diffmod.table`` is generated in the ``out`` directtory. 
+
 
