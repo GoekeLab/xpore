@@ -24,7 +24,7 @@ $ pyensembl install --release 91 --species homo_sapiens  # please specify the co
 ```
 ### Documentation
 
-Please refer to the xPore documention ([https://xpore.readthedocs.io](https://xpore.readthedocs.io)) for additional information, a quick start guide, and details on the data processing and output file format.
+Please refer to the xPore documentation ([https://xpore.readthedocs.io](https://xpore.readthedocs.io)) for additional information, a quick start guide, and details on the data processing and output file format.
 
 xPore is described in detail in a preprint (https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1)
 
