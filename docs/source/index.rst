@@ -31,10 +31,16 @@ Contents
    preparation
    data
    cmd
+   citing
 
 Contacts
 --------
-xPore is maintained by `Ploy N. Pratanwanich <https://github.com/ploy-np>`_ and `Jonathan Goeke <https://github.com/jonathangoeke>`_ from the Genome Institute of Singapore, A*STAR. 
+If you use xPore in your research, please cite
+
+Ploy N. Pratanwanich, et al. "Detection of differential RNA modifications from direct RNA sequencing of human cell lines". *bioRxiv* (2020) doi:`2020.06.18.160010 <https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1>`_
+
+
+xPore is maintained by `Ploy N. Pratanwanich <https://github.com/ploy-np>`_, `Yuk Kei Wan <https://github.com/yuukiiwa>`_ and `Jonathan Goeke <https://github.com/jonathangoeke>`_ from the Genome Institute of Singapore, A*STAR. 
 
 If you want to contribute, please leave an issue in `our repo <https://github.com/GoekeLab/xpore>`_
 
