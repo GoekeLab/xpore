@@ -517,7 +517,7 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
                 eventalign_result.seek(pos_start,0)
                 events_str = eventalign_result.read(pos_end-pos_start)
                 data = combine(events_str)
-                if data.size > 1:
+                if (data is not None) and (data.size > 1):
                     data_dict[read_index] = data
                 readcount += 1 
                 if readcount > readcount_max:
