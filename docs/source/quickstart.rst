@@ -15,8 +15,8 @@ After extraction, you will find::
     |-- data
         |-- HEK293T-METTL3-KO-rep1  # dataset dir
         |-- HEK293T-WT-rep1 # dataset dir
-    |-- demo.gtf # general transfer format file for gene-transcript mapping  
-    |-- demo.fa # transcriptome reference file for gene-transcript mapping
+    |-- demo.gtf # GTF (general transfer format) file required for mapping transcriptomic to genomic coordinates  
+    |-- demo.fa # transcriptome reference FASTA file required for mapping transcriptomic to genomic coordinates
 
 Each dataset under the ``data`` directory contains the following directories:
 
