@@ -46,7 +46,7 @@ If you use xPore in your research, please cite
 
 ### Contact
 
-xPore is maintained by [Ploy N. Pratanwanich](https://github.com/ploy-np) and [Jonathan Goeke](https://github.com/jonathangoeke) from the Genome Institute of Singapore, A*STAR. 
+xPore is maintained by [Ploy N. Pratanwanich](https://github.com/ploy-np), [Yuk Kei Wan](https://github.com/yuukiiwa) and [Jonathan Goeke](https://github.com/jonathangoeke) from the Genome Institute of Singapore, A*STAR. 
 
 If you want to contribute, please leave an issue. 
 
