@@ -1,16 +1,6 @@
-import argparse
 import os
 
-def get_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    required = parser.add_argument_group('required arguments')
-    # Required arguments
-    required.add_argument('--diffmod_dir', dest='diffmod_dir', help='diffmod directory path, the output from xpore-diffmod.',required=True)
-
-    return parser.parse_args()
-
-def postProcessing(diffmod_table_path,out_dir):
+def run_postprocessing(diffmod_table_path,out_dir):
     file=open(diffmod_table_path,"r")
     header=file.readline()
     entries=file.readlines()
@@ -43,15 +33,8 @@ def postProcessing(diffmod_table_path,out_dir):
             outfile.write(ln)
     outfile.close()
 
-def main():
-    args = get_args()
+def postprocessing(args):
     diffmod_dir = args.diffmod_dir
     diffmod_table_path = os.path.join(diffmod_dir,"diffmod.table")
-    postProcessing(diffmod_table_path,diffmod_dir)
+    run_postprocessing(diffmod_table_path,diffmod_dir)
 
-if __name__ == '__main__':
-    """
-    Usage:
-        xpore-postprocessing --diffmod_dir DIFFMOD_DIR
-    """
-    main()

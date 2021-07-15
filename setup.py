@@ -30,9 +30,7 @@ setup(
             'ujson>=4.0.1'
             ],
     python_requires=">=3.8",
-    entry_points={'console_scripts': ["xpore-dataprep={}.scripts.dataprep:main".format(__pkg_name__),
-                                      "xpore-diffmod={}.scripts.diffmod:main".format(__pkg_name__),
-                                      "xpore-postprocessing={}.scripts.postprocessing:main".format(__pkg_name__)]},
+    entry_points={'console_scripts': ["xpore={}.scripts.xpore:main".format(__pkg_name__)]},
     classifiers=[
         # Trove classifiers
         # (https://pypi.python.org/pypi?%3Aaction=list_classifiers)
