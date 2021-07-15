@@ -3,7 +3,7 @@
 Quickstart - Detection of differential RNA modifications
 =========================================================
 
-Download and extract the demo dataset from our `S3 bucket <http://s3.ap-southeast-1.amazonaws.com/all-public-data.store.genome.sg/xpore/demo.tar.gz>`_::
+Download and extract the demo dataset from our `zenodo <https://zenodo.org/record/5103099/files/demo.tar.gz>`_::
 
     wget http://s3.ap-southeast-1.amazonaws.com/all-public-data.store.genome.sg/xpore/demo.tar.gz
     tar -xvf demo.tar.gz
@@ -15,17 +15,19 @@ After extraction, you will find::
     |-- data
         |-- HEK293T-METTL3-KO-rep1  # dataset dir
         |-- HEK293T-WT-rep1 # dataset dir
-    |-- demo.gtf
-    |-- demo.fa
+    |-- demo.gtf # general transfer format file for gene-transcript mapping  
+    |-- demo.fa # transcriptome reference file for gene-transcript mapping
 
 Each dataset under the ``data`` directory contains the following directories:
 
-* ``fast5`` : Raw signal FAST5 files
-* ``fastq`` : Basecalled reads
-* ``bamtx`` : Transcriptome-aligned sequence
+* ``fast5`` : Raw signal, FAST5 files
+* ``fastq`` : Basecalled reads, FASTQ file
+* ``bamtx`` : Transcriptome-aligned sequence, BAM file
 * ``nanopolish``: Eventalign files obtained from `nanopolish eventalign <https://nanopolish.readthedocs.io/en/latest/quickstart_eventalign.html>`_
 
-1. Preprocess the data for each data set using ``xpore-dataprep``. (This step will take approximately 5h for 1 million reads)::
+Note that the FAST5, FASTQ and BAM files are required to obtain the eventalign file with Nanopolish, xPore only requires the eventalign file. See our :ref:`Data preparation page <preparation>` for details to obtain the eventalign file from raw reads.
+
+1. Preprocess the data for each data set using ``xpore dataprep``. Note that the ``--gtf_path_or_url`` and ``--transcript_fasta_paths_or_urls`` arguments are required to map transcriptomic to genomic coordinates when the ``--genome`` option is chosen, so that xPore can run based on genome coordinates. (This step will take approximately 5h for 1 million reads)::
 
     # Within each dataset directory i.e. demo/data/HEK293T-METTL3-KO-rep1 and demo/data/HEK293T-WT-rep1, run
     xpore-dataprep \
@@ -43,7 +45,7 @@ The output files are stored under ``dataprep`` in each  dataset directory:
 * ``data.readcount`` : Summary of readcounts per gene
 * ``data.log`` : Log file
 
-Run ``xpore-dataprep -h`` to explore the full usage.
+Run ``xpore dataprep -h`` or visit our :ref:`Command line arguments <cmd>` to explore the full usage description. 
 
 2. Prepare a ``.yml`` configuration file. With this YAML file, you can specify the information of your design experiment, the data directories, the output directory, and the method options.
 In the demo directory, there is an example configuration file ``Hek293T_config.yaml`` available that you can use as a starting template.
@@ -60,21 +62,21 @@ Below is how it looks like::
     out: ./out # output dir
 
 
-See the :ref:`Configuration file page <configuration>` for details.
+See the :ref:`Configuration file page <configuration>` for more details.
 
 3. Now that we have the data and the configuration file ready for modelling differential modifications using ``xpore-diffmod``. 
 
 ::
 
     # At the demo directory where the configuration file is, run.
-    xpore-diffmod --config Hek293T_config.yml
+    xpore diffmod --config Hek293T_config.yml
 
 The output files are generated within the ``out`` directory:
 
 * ``diffmod.table`` : Result table of differential RNA modification across all tested positions
 * ``diffmod.log`` : Log file
 
-Run ``xpore-diffmod -h`` to explore the full usage.
+Run ``xpore diffmod -h`` or visit our :ref:`Command line arguments <cmd>` to explore the full usage description.
 
 We can rank the significantly differentially modified sites based on ``pval_HEK293T-KO_vs_HEK293T-WT``. The results are shown below.::
 
@@ -87,15 +89,13 @@ We can rank the significantly differentially modified sites based on ``pval_HEK2
 
 4. (Optional) We can consider only one modification type per k-mer by finding the majority ``mod_assignment`` of each k-mer. 
 For example, the majority of the modification means of ``GGACT`` (``mu_mod``) is lower than the non-modification counterpart (``mu_unmod``). 
-This can be achieved by simply running ``groupby`` on the ``kmer`` and ``mod_assignment`` columns in Python.
-We can then remove those positions with the ``mod_assigment`` not in line with the majority in order to restrict ourselves with one modification type per kmer in the analysis.
-You can find more details in our paper.
-This can be done by running ``xpore-postprocessing``.
+We can filter out those positions whose ``mod_assigment`` values are not in line with those of the majority in order to restrict ourselves with one modification type per kmer in the analysis.
+This can be done by running ``xpore postprocessing``.
 
 ::
 
-    xpore-postprocessing --diffmod_dir out
+    xpore postprocessing --diffmod_dir out
 
-With this command, we will get the final file in which only kmers with their ``mod_assignment`` different from the majority assigment of the corresponding kmer are removed. The output file ``majority_direction_kmer_diffmod.table`` is generated in the ``out`` directtory. 
+With this command, we will get the final file in which only kmers with their ``mod_assignment`` different from the majority assigment of the corresponding kmer are removed. The output file ``majority_direction_kmer_diffmod.table`` is generated in the ``out`` directtory. You can find more details in our paper.
 
-
+Run ``xpore postprocessing -h`` or visit our :ref:`Command line arguments <cmd>` to explore the full usage description.
