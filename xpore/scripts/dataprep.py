@@ -1,4 +1,3 @@
-import argparse
 import numpy as np
 import pandas as pd
 import os,re
@@ -12,33 +11,6 @@ from io import StringIO
 
 from . import helper
 from ..utils import misc
-
-def get_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    optional = parser._action_groups.pop()
-    required = parser.add_argument_group('required arguments')
-
-    # Required arguments
-    required.add_argument('--eventalign', dest='eventalign', help='eventalign filepath, the output from nanopolish.',required=True)
-    ##required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
-    required.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
-    optional.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf file path or url.',type=str)
-    optional.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript fasta paths or urls.',type=str)
-
-    # Optional
-    optional.add_argument('--skip_eventalign_indexing', dest='skip_eventalign_indexing', help='skip indexing the eventalign nanopolish output.',default=False,action='store_true')
-
-    # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
-    optional.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true') 
-    optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int, default=1)
-    optional.add_argument('--chunk_size', dest='chunk_size', help='number of lines from nanopolish eventalign.txt for processing.',type=int, default=1000000)
-    optional.add_argument('--readcount_min', dest='readcount_min', help='minimum read counts per gene.',type=int, default=1)
-    optional.add_argument('--readcount_max', dest='readcount_max', help='maximum read counts per gene.',type=int, default=1000)
-    optional.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') #todo
-
-    parser._action_groups.append(optional)
-    return parser.parse_args()
 
 def index(eventalign_result,pos_start,out_paths,locks):
     eventalign_result = eventalign_result.set_index(['contig','read_index'])
@@ -276,9 +248,8 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_p
     for tx_id in set(df_eventalign_index.index):
         try:
 ##           g_id = ensembl.transcript_by_id(tx_id).gene_id 
-            if tx_id in gtf_dict:
-                g_id = gtf_dict[tx_id]['g_id'] 
-        except ValueError:
+            g_id = gtf_dict[tx_id]['g_id'] 
+        except KeyError:
             continue
         else:
 #             gene_ids = gene_ids.union([g_id])
@@ -687,8 +658,7 @@ def mergeGTFtxIDversion(gtf_path_or_url,out_dir):
     new_gtf.close()
     return new_gtf_path
 
-def main():
-    args = get_args()
+def dataprep(args):
     #
     n_processes = args.n_processes        
     eventalign_filepath = args.eventalign
@@ -720,10 +690,6 @@ def main():
             gtf_path_or_url = mergeGTFtxIDversion(gtf_path_or_url,out_dir)
         fasta_dict = readFasta(transcript_fasta_paths_or_urls)
         gtf_dict = readGTF(gtf_path_or_url)
-        print(len(gtf_dict))
         parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume)
     else:
         parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume)
-
-if __name__ == '__main__':
-    main()
