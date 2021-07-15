@@ -42,7 +42,7 @@ def parse_options(argv):
     optional_diffmod = parser_diffmod._action_groups.pop()
     required_diffmod = parser_diffmod.add_argument_group('required arguments')
     # Required arguments
-    required_diffmod.add_argument('--config', dest='config', help='yaml configuraion filepath.',required=True)
+    required_diffmod.add_argument('--config', dest='config', help='YAML configuraion filepath.',required=True)
     # Optional arguments
     optional_diffmod.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int,default=1)
     optional_diffmod.add_argument('--save_models', dest='save_models', help='with this argument, the program will save the model parameters for each id.',default=False,action='store_true') # todo
