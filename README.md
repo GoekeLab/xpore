@@ -20,17 +20,16 @@ To install the latest release with PyPI (recommended), run
 
 ```sh
 $ pip install xpore 
-$ pyensembl install --release 91 --species homo_sapiens  # please specify the compatible Ensembl release with your data when you install it.
 ```
 ### Documentation
 
-Please refer to the xPore documentation ([https://xpore.readthedocs.io](https://xpore.readthedocs.io)) for additional information, a quick start guide, and details on the data processing and output file format.
+Please refer to our xPore documentation ([https://xpore.readthedocs.io](https://xpore.readthedocs.io)) for additional information, a quick start guide, and details on the data processing and output file format.
 
-xPore is described in detail in a preprint (https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1)
+xPore is described in details in a preprint (https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1)
 
 ### Release History
 
-The current release is xPore v1.0.
+The current release is xPore v2.0.
 
 Please refer to the github release history for previous releases: https://github.com/GoekeLab/xpore/releases
 
