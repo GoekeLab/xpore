@@ -16,15 +16,15 @@ def parse_options(argv):
     parser.add_argument('-v', '--version', action='version', version='%(prog)s {version}'.format(version=__version__))
 
     ### RUN MODE "DATAPREP"
-    parser_dataprep = subparsers.add_parser('dataprep', help='run mode to preprocess nanopolish eventalign.txt before differential modification analysis')
+    parser_dataprep = subparsers.add_parser('dataprep', help='run mode for preprocessing nanopolish eventalign.txt before differential modification analysis')
     optional_dataprep = parser_dataprep._action_groups.pop()
     required_dataprep = parser_dataprep.add_argument_group('required arguments')
     # Required arguments
     required_dataprep.add_argument('--eventalign', dest='eventalign', help='eventalign filepath, the output from nanopolish.',required=True)
     ##required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
     required_dataprep.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
-    optional_dataprep.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='gtf file path or url.',type=str)
-    optional_dataprep.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript fasta paths or urls.',type=str)
+    optional_dataprep.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='GTF file path or url.',type=str)
+    optional_dataprep.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript FASTA paths or urls.',type=str)
     # Optional arguments
     optional_dataprep.add_argument('--skip_eventalign_indexing', dest='skip_eventalign_indexing', help='skip indexing the eventalign nanopolish output.',default=False,action='store_true')
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
@@ -38,7 +38,7 @@ def parse_options(argv):
     parser_dataprep.set_defaults(func=dataprep)
 
     ### RUN MODE "DIFFMOD"
-    parser_diffmod = subparsers.add_parser('diffmod', help='run mode to perform differential modification analysis')
+    parser_diffmod = subparsers.add_parser('diffmod', help='run mode for performing differential modification analysis')
     optional_diffmod = parser_diffmod._action_groups.pop()
     required_diffmod = parser_diffmod.add_argument_group('required arguments')
     # Required arguments
@@ -47,12 +47,12 @@ def parse_options(argv):
     optional_diffmod.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int,default=1)
     optional_diffmod.add_argument('--save_models', dest='save_models', help='with this argument, the program will save the model parameters for each id.',default=False,action='store_true') # todo
     optional_diffmod.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') 
-    optional_diffmod.add_argument('--ids', dest='ids', help='gene / transcript ids to model.',default=[],nargs='*')
+    optional_diffmod.add_argument('--ids', dest='ids', help='gene or transcript ids to model.',default=[],nargs='*')
     parser_diffmod._action_groups.append(optional_diffmod)
     parser_diffmod.set_defaults(func=diffmod)
 
     ### RUN MODE "POSTPROCESSING"
-    parser_postprocessing = subparsers.add_parser('postprocessing', help='run mode to post process diffmod.table')
+    parser_postprocessing = subparsers.add_parser('postprocessing', help='run mode for post-processing diffmod.table, the result table from differential modification analysis.')
     required_postprocessing = parser_postprocessing.add_argument_group('required arguments')
     # Required arguments
     required_postprocessing.add_argument('--diffmod_dir', dest='diffmod_dir', help='diffmod directory path, the output from xpore-diffmod.',required=True)
