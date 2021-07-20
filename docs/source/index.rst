@@ -37,8 +37,7 @@ Contacts
 --------
 If you use xPore in your research, please cite
 
-Ploy N. Pratanwanich, et al. "Detection of differential RNA modifications from direct RNA sequencing of human cell lines". *bioRxiv* (2020) doi:`2020.06.18.160010 <https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1>`_
-
+Ploy N. Pratanwanich, et al.,Identification of differential RNA modifications from nanopore direct RNA sequencing with xPore. *Nat Biotechnol* (2021), `https://doi.org/10.1038/s41587-021-00949-w <https://doi.org/10.1038/s41587-021-00949-w>`_ 
 
 xPore is maintained by `Ploy N. Pratanwanich <https://github.com/ploy-np>`_, `Yuk Kei Wan <https://github.com/yuukiiwa>`_ and `Jonathan Goeke <https://github.com/jonathangoeke>`_ from the Genome Institute of Singapore, A*STAR. 
 
