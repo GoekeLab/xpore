@@ -32,6 +32,7 @@ Contents
    data
    cmd
    citing
+   help
 
 Contacts
 --------
