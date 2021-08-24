@@ -20,17 +20,20 @@ To install the latest release with PyPI (recommended), run
 
 ```sh
 $ pip install xpore 
-$ pyensembl install --release 91 --species homo_sapiens  # please specify the compatible Ensembl release with your data when you install it.
 ```
+---
+
 ### Documentation
 
-Please refer to the xPore documentation ([https://xpore.readthedocs.io](https://xpore.readthedocs.io)) for additional information, a quick start guide, and details on the data processing and output file format.
+Please refer to our xPore documentation ([https://xpore.readthedocs.io](https://xpore.readthedocs.io)) for additional information, a quick start guide, and details on the data processing and output file format.
 
-xPore is described in detail in a preprint (https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1)
+xPore is described in details in [Pratanwanich et al. *Nat Biotechnol* (2021)](https://doi.org/10.1038/s41587-021-00949-w)
+
+---
 
 ### Release History
 
-The current release is xPore v1.0.
+The current release is xPore v2.0. 
 
 Please refer to the github release history for previous releases: https://github.com/GoekeLab/xpore/releases
 
@@ -40,15 +43,17 @@ Please refer to the github release history for previous releases: https://github
 
 If you use xPore in your research, please cite
 
-[Ploy N. Pratanwanich, Ploy N. et al. "Detection of differential RNA modifications from direct RNA sequencing of human cell lines". *bioRxiv* (2020) doi: https://doi.org/10.1101/2020.06.18.160010](https://www.biorxiv.org/content/10.1101/2020.06.18.160010v1)
+Ploy N. Pratanwanich, et al. Identification of differential RNA modifications from nanopore direct RNA sequencing with xPore. *Nat Biotechnol* (2021), [https://doi.org/10.1038/s41587-021-00949-w](https://doi.org/10.1038/s41587-021-00949-w).
 
+---
+
+### Getting Help
+
+We appreciate your feedback and questions! You can report any error or suggestion related to xPore as an [issue on github](https://github.com/GoekeLab/xpore/issues). If you have questions related to the manuscript, data, or any general comment or suggestion please use the [Discussions](https://github.com/GoekeLab/xpore/discussions).
+
+Thank you!
 
 ---
 
 ### Contact
-
-xPore is maintained by [Ploy N. Pratanwanich](https://github.com/ploy-np) and [Jonathan Goeke](https://github.com/jonathangoeke) from the Genome Institute of Singapore, A*STAR. 
-
-If you want to contribute, please leave an issue. 
-
-Thank you!
+xPore is maintained by [Ploy N. Pratanwanich](https://github.com/ploy-np), [Yuk Kei Wan](https://github.com/yuukiiwa) and [Jonathan Goeke](https://github.com/jonathangoeke) from the Genome Institute of Singapore, A\*STAR. 

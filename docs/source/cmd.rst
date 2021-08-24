@@ -1,7 +1,7 @@
-.. _scripts:
+.. _cmd:
 
-Scripts
-==========
+Command line arguments
+=======================
 
 We provide 2 main scripts to run the analysis of differential RNA modifications as the following.
 
@@ -10,27 +10,20 @@ We provide 2 main scripts to run the analysis of differential RNA modifications 
 
 * Input
 
-Output files from `nanopolish eventalgin`. Please refer to :ref:`Data preparation <preparation>` for the full Nanopolish command.
-
-* Usage example
+Output files from ``nanopolish eventalgin``. Please refer to :ref:`Data preparation <preparation>` for the full Nanopolish command.
 
 =================================   ==========  ===================  ============================================================================================================
-Argument name(s)                    Required    Default value         Description
+Argument name                       Required    Default value         Description
 =================================   ==========  ===================  ============================================================================================================
 --eventalign=FILE                   Yes         NA                    Eventalign filepath, the output from nanopolish.         
---summary=FILE                      Yes         NA                    Eventalign summary filepath, the output from nanopolish.
 --out_dir=DIR                       Yes         NA                    Output directory.
---ensembl=NUM                       No          91                    Ensembl version for gene-transcript mapping.
---species=STR                       No          homo_sapiens          Species for ensembl gene-transcript mapping.
---customised_genome                 No          False                 If customised genome provided.
---reference_name                    No          NA                    fasta reference name.
---annotation_name                   No          NA                    gtf annotation name.
---gtf_path_or_url                   No          NA                    gtf file path or url.
---transcript_fasta_paths_or_urls    No          NA                    Transcript fasta paths or urls.
+--gtf_path_or_url                   No          NA                    GTF file path or url used for mapping transcriptomic to genomic coordinates.
+--transcript_fasta_paths_or_urls    No          NA                    Transcript FASTA paths or urls used for mapping transcriptomic to genomic coordinates.
 --skip_eventalign_indexing          No          False                 To skip indexing the eventalign nanopolish output.
 --genome                            No          False                 To run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates.
 --n_processes=NUM                   No          1                     Number of processes to run.
 --readcount_max=NUM                 No          1000                  Maximum read counts per gene.
+--readcount_min=NUM                 No          1                     Minimum read counts per gene.
 --resume                            No          False                 With this argument, the program will resume from the previous run.
 =================================   ==========  ===================  ============================================================================================================
 
@@ -51,14 +44,12 @@ data.readcount          csv             Summary of readcounts per gene.
 
 * Input
 
-Output files from `xpore-dataprep`.
-
-* Usage example
+Output files from ``xpore-dataprep``.
 
 ===================  ==========  ===============      ==============================================================================
-Argument name(s)      Required    Default value       Description
+Argument name         Required    Default value       Description
 ===================  ==========  ===============      ==============================================================================
---config=FILE           Yes         NA                Yaml configuraion filepath.
+--config=FILE           Yes         NA                YAML configurtaion filepath.
 --n_processes=NUM       No          1                 Number of processes to run.
 --save_models           No          False             With this argument, the program will save the model parameters for each id.
 --resume                No          False             With this argument, the program will resume from the previous run.
@@ -73,4 +64,17 @@ File name                File type           Description
 diffmod.table            csv                 Output table information of differential modification rates. Please refer to :ref:`Output table description <outputtable>` for the full description.   
 diffmod.log              txt                 Gene/Transcript ids being processed.
 ======================  ===============     =================================================================================================================================================
-   
+
+``xpore-postprocessing``
+**************************
+
+* Input
+
+The ``diffmod.table`` file  from ``xpore-diffmod``.
+
+======================  ===============     =======================================================================
+Argument name            Required           Description
+======================  ===============     =======================================================================
+--diffmod_dir            Yes                Path of the directory containing ``diffmod.table``.
+======================  ===============     =======================================================================
+

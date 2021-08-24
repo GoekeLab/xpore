@@ -14,7 +14,7 @@ setup(
     name=__pkg_name__,
     license="MIT",
     description='xpore is a python package for Nanopore data analysis of differential RNA modifications.',
-    version='v1.0',
+    version='v2.0',
     long_description=README,
     long_description_content_type='text/markdown',
     url='https://github.com/GoekeLab/xpore',
@@ -30,8 +30,7 @@ setup(
             'ujson>=4.0.1'
             ],
     python_requires=">=3.8",
-    entry_points={'console_scripts': ["xpore-dataprep={}.scripts.dataprep:main".format(__pkg_name__),
-                                      "xpore-diffmod={}.scripts.diffmod:main".format(__pkg_name__)]},
+    entry_points={'console_scripts': ["xpore={}.scripts.xpore:main".format(__pkg_name__)]},
     classifiers=[
         # Trove classifiers
         # (https://pypi.python.org/pypi?%3Aaction=list_classifiers)

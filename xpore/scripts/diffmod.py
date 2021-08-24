@@ -1,4 +1,3 @@
-import argparse
 import numpy as np
 import pandas
 import os
@@ -12,25 +11,6 @@ from ..diffmod.configurator import Configurator
 from ..diffmod.gmm import GMM
 from ..diffmod import io
 from ..diffmod.statstest import StatsTest
-
-def get_args():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    optional = parser._action_groups.pop()
-    required = parser.add_argument_group('required arguments')
-    
-    # Required arguments
-    required.add_argument('--config', dest='config', help='yaml configuraion filepath.',required=True)
-
-    # Optional arguments
-    optional.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int,default=1)
-    optional.add_argument('--save_models', dest='save_models', help='with this argument, the program will save the model parameters for each id.',default=False,action='store_true') # todo
-    optional.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') 
-    
-    optional.add_argument('--ids', dest='ids', help='gene / transcript ids to model.',default=[],nargs='*')
-
-    parser._action_groups.append(optional)
-    return parser.parse_args()
         
 def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_params, out_paths, save_models,locks):
     """
@@ -96,8 +76,7 @@ def execute(idx, data_dict, data_info, method, criteria, model_kmer, prior_param
     with locks['log'], open(out_paths['log'],'a') as f:
         f.write(idx + '\n')
                         
-def main():
-    args = get_args()
+def diffmod(args):
     
     n_processes = args.n_processes       
     config_filepath = args.config
@@ -205,16 +184,6 @@ def main():
     # Close data files
     for f in f_data.values():
         f.close()   
-        
+
     with open(out_paths['log'],'a+') as f:
         f.write(helper.decor_message('successfully finished'))
-        
-
-if __name__ == '__main__':
-    """
-    Usage:
-        xpore-diffmod --config CONFIG [--n_processes N_PROCESSES] \
-                     [--save_models] [--resume] \
-                     [--ids [IDS [IDS ...]]]
-    """
-    main()
