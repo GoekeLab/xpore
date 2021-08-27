@@ -178,11 +178,19 @@ def readGTF(gtf_path_or_url):
     dict={}
     for ln in gtf:
         if not ln.startswith("#"):
-            ln=ln.split("\t")
+            ln=ln.strip("\n").split("\t")
             if ln[2] == "transcript" or ln[2] == "exon":
                 chr,type,start,end=ln[0],ln[2],int(ln[3]),int(ln[4])
-                tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
-                g_id=ln[-1].split('gene_id "')[1].split('";')[0]
+                attrList=ln[-1].split(";")
+                attrDict={}
+                for k in attrList:
+                    p=k.strip().split(" ")
+                    if len(p) == 2:
+                        attrDict[p[0]]=p[1].strip('\"')
+                ##tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
+                ##g_id=ln[-1].split('gene_id "')[1].split('";')[0]
+                tx_id = attrDict["transcript_id"]
+                g_id = attrDict["gene_id"]
                 if tx_id not in dict:
                     dict[tx_id]={'chr':chr,'g_id':g_id,'strand':ln[6]}
                     if type not in dict[tx_id]:
