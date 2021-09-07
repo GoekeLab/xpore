@@ -4,6 +4,7 @@ import os
 from collections import OrderedDict, defaultdict
 import itertools
 import scipy.stats
+from math import sqrt
 
 from ..utils import stats
 from .gmm import GMM
@@ -285,7 +286,9 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         sigma2_assigned = [sigma2[cluster_idx['unmod']],sigma2[cluster_idx['mod']]] 
         conf_mu = [conf_mu[cluster_idx['unmod']],conf_mu[cluster_idx['mod']]]
         w_mod = w[:,cluster_idx['mod']]
-        mod_assignment = [['higher','lower'][(mu[0]<mu[1])^cluster_idx['mod']]]
+        ## use z-test to compare two distribution
+        Z=(mu[1]-mu[0])/sqrt((sigma2[1]+sigma2[0]))
+        mod_assignment = [['higher','lower'][(0<Z)^cluster_idx['mod']]]
             
         
         ### calculate stats_pairwise
