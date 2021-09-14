@@ -4,7 +4,6 @@ import os
 from collections import OrderedDict, defaultdict
 import itertools
 import scipy.stats
-from math import sqrt
 
 from ..utils import stats
 from .gmm import GMM
@@ -100,7 +99,6 @@ def save_result_table(table, out_filepath):
 def save_models_to_hdf5(models, model_filepath):  # per gene/transcript
     """
     Save model parameters.
-
     Parameters
     ----------
     models
@@ -143,12 +141,10 @@ def save_models_to_hdf5(models, model_filepath):  # per gene/transcript
 def load_models(model_filepath):  # per gene/transcript #Todo: refine.
     """
     Construct a model and load model parameters.
-
     Parameters
     ----------
     model_filepath: str
         Path where the model is stored.
-
     Return
     ------
     models
@@ -231,7 +227,6 @@ def get_result_table_header(data_info,method):
 def generate_result_table(models, data_info):  # per idx (gene/transcript)
     """
     Generate a table containing learned model parameters and statistic tests.
-
     Parameters
     ----------
     models
@@ -240,7 +235,6 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         Labels of samples.
     data_inf
         Dict
-
     Returns
     -------
     table
@@ -272,10 +266,12 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         model_group_names = model.nodes['x'].params['group_names'] #condition_names if pooling, run_names otherwise.
         
         ### Cluster assignment ###
-        conf_mu = [calculate_confidence_cluster_assignment(mu[0],model.kmer_signal),calculate_confidence_cluster_assignment(mu[1],model.kmer_signal)]
-    
+#        conf_mu = [calculate_confidence_cluster_assignment(mu[0],model.kmer_signal),calculate_confidence_cluster_assignment(mu[1],model.kmer_signal)]
+        conf_mu = [bhattacharyya_gaussian_distance(mu[0],sigma2[0],model.kmer_signal), bhattacharyya_gaussian_distance(mu[1],sigma2[1],model.kmer_signal)] ## changed here
+
         cluster_idx = {}
-        if conf_mu[0] > conf_mu[1]:
+#        if conf_mu[0] > conf_mu[1]:  ##changed here
+        if conf_mu[0] < conf_mu[1]:
             cluster_idx['unmod'] = 0
             cluster_idx['mod'] = 1
         else:
@@ -286,9 +282,7 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         sigma2_assigned = [sigma2[cluster_idx['unmod']],sigma2[cluster_idx['mod']]] 
         conf_mu = [conf_mu[cluster_idx['unmod']],conf_mu[cluster_idx['mod']]]
         w_mod = w[:,cluster_idx['mod']]
-        ## use z-test to compare two distribution
-        Z=(mu[1]-mu[0])/sqrt((sigma2[1]+sigma2[0]))
-        mod_assignment = [['higher','lower'][(0<Z)^cluster_idx['mod']]]
+        mod_assignment = [['higher','lower'][(mu[0]<mu[1])^cluster_idx['mod']]]
             
         
         ### calculate stats_pairwise
@@ -371,6 +365,12 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
 
     return table
 
+def bhattacharyya_gaussian_distance(mu1,sigma1,kmer_signal):
+    mu2,sigma2=kmer_signal['mean'],kmer_signal['std']**2
+    sigma = (1 / 2) * (sigma1 + sigma2)
+    T1 = (1 / 8) * (np.sqrt((mu1 - mu2) * sigma * (mu1 - mu2)))
+    T2 = (1 / 2) * np.log(sigma / np.sqrt(sigma1 * sigma2))
+    return T1 + T2
 
 def calculate_confidence_cluster_assignment(mu,kmer_signal):
     cdf = scipy.stats.norm.cdf(kmer_signal['mean'] - abs(kmer_signal['mean']-mu), loc=kmer_signal['mean'], scale=kmer_signal['std'])
