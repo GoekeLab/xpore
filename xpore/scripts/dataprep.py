@@ -629,6 +629,7 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):
             
         try:
             assert len(set(reference_kmer_array)) == 1
+            assert list(set(reference_kmer_array))[0].count('N') == 0 ##to weed out the mapped kmers from tx_seq that contain 'N', which is not in diffmod's model_kmer
         except:
             asserted = False
             break
