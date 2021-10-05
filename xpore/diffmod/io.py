@@ -99,6 +99,7 @@ def save_result_table(table, out_filepath):
 def save_models_to_hdf5(models, model_filepath):  # per gene/transcript
     """
     Save model parameters.
+
     Parameters
     ----------
     models
@@ -141,10 +142,12 @@ def save_models_to_hdf5(models, model_filepath):  # per gene/transcript
 def load_models(model_filepath):  # per gene/transcript #Todo: refine.
     """
     Construct a model and load model parameters.
+
     Parameters
     ----------
     model_filepath: str
         Path where the model is stored.
+
     Return
     ------
     models
@@ -227,6 +230,7 @@ def get_result_table_header(data_info,method):
 def generate_result_table(models, data_info):  # per idx (gene/transcript)
     """
     Generate a table containing learned model parameters and statistic tests.
+
     Parameters
     ----------
     models
@@ -235,6 +239,7 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         Labels of samples.
     data_inf
         Dict
+
     Returns
     -------
     table
