@@ -266,13 +266,10 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
         model_group_names = model.nodes['x'].params['group_names'] #condition_names if pooling, run_names otherwise.
         
         ### Cluster assignment ###
-#       conf_mu = [calculate_confidence_cluster_assignment(mu[0],model.kmer_signal),calculate_confidence_cluster_assignment(mu[1],model.kmer_signal)]
-#       conf_mu = [bhattacharyya_gaussian_distance(mu[0],sigma2[0],model.kmer_signal), bhattacharyya_gaussian_distance(mu[1],sigma2[1],model.kmer_signal)] ## changed here
-        conf_mu = [kl_divergence(mu[0],sigma2[0],model.kmer_signal),kl_divergence(mu[1],sigma2[1],model.kmer_signal)]
-
+        conf_mu = [calculate_confidence_cluster_assignment(mu[0],model.kmer_signal),calculate_confidence_cluster_assignment(mu[1],model.kmer_signal)]
+    
         cluster_idx = {}
-#        if conf_mu[0] > conf_mu[1]:  ##changed here
-        if conf_mu[0] < conf_mu[1]:
+        if conf_mu[0] > conf_mu[1]:
             cluster_idx['unmod'] = 0
             cluster_idx['mod'] = 1
         else:
@@ -366,18 +363,6 @@ def generate_result_table(models, data_info):  # per idx (gene/transcript)
 
     return table
 
-def bhattacharyya_gaussian_distance(mu1,sigma1,kmer_signal):
-    mu2,sigma2=kmer_signal['mean'],kmer_signal['std']
-    sigma = (1 / 2) * (sigma1 + sigma2)
-    T1 = (1 / 8) * (np.sqrt((mu1 - mu2) * sigma * (mu1 - mu2)))
-    T2 = (1 / 2) * np.log(sigma / np.sqrt(sigma1 * sigma2))
-    return T1 + T2
-
-def kl_divergence(mu1,sigma1,kmer_signal):
-    mu2,sigma2=kmer_signal['mean'],kmer_signal['std']
-    T1 = np.log(sigma2 / sigma1)
-    T2 = (sigma1**2 + (mu1-mu2)**2) / (2 * (sigma2**2))
-    return T1 + T2 - 0.5    
 
 def calculate_confidence_cluster_assignment(mu,kmer_signal):
     cdf = scipy.stats.norm.cdf(kmer_signal['mean'] - abs(kmer_signal['mean']-mu), loc=kmer_signal['mean'], scale=kmer_signal['std'])
