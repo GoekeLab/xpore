@@ -3,9 +3,9 @@
 Quickstart - Detection of differential RNA modifications
 =========================================================
 
-Download and extract the demo dataset from our `zenodo <https://zenodo.org/record/5103099/files/demo.tar.gz>`_::
+Download and extract the demo dataset from our `zenodo <https://zenodo.org/record/5162402/files/demo.tar.gz>`_::
 
-    wget https://zenodo.org/record/5103099/files/demo.tar.gz
+    wget https://zenodo.org/record/5162402/files/demo.tar.gz
     tar -xvf demo.tar.gz
 
 After extraction, you will find::
@@ -30,7 +30,7 @@ Note that the FAST5, FASTQ and BAM files are required to obtain the eventalign f
 1. Preprocess the data for each data set using ``xpore dataprep``. Note that the ``--gtf_path_or_url`` and ``--transcript_fasta_paths_or_urls`` arguments are required to map transcriptomic to genomic coordinates when the ``--genome`` option is chosen, so that xPore can run based on genome coordinates. (This step will take approximately 5h for 1 million reads)::
 
     # Within each dataset directory i.e. demo/data/HEK293T-METTL3-KO-rep1 and demo/data/HEK293T-WT-rep1, run
-    xpore-dataprep \
+    xpore dataprep \
     --eventalign nanopolish/eventalign.txt \
     --gtf_path_or_url demo.gtf \
     --transcript_fasta_paths_or_urls demo.fa \
