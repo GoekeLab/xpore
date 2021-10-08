@@ -27,7 +27,7 @@ Each dataset under the ``data`` directory contains the following directories:
 
 Note that the FAST5, FASTQ and BAM files are required to obtain the eventalign file with Nanopolish, xPore only requires the eventalign file. See our :ref:`Data preparation page <preparation>` for details to obtain the eventalign file from raw reads.
 
-1. Preprocess the data for each data set using ``xpore dataprep``. Note that the ``--gtf_or_gff`` and ``--transcript_fasta`` arguments are required to map transcriptomic to genomic coordinates when the ``--genome`` option is chosen, so that xPore can run based on genome coordinates. A GTF file is the more preferred input for the ``--gtf_or_gff`` option. Please do note that ``--gtf_or_gff`` only supports GFF files from ENSEMBL and GENCODE (not UCSC).(This step will take approximately 5h for 1 million reads)::
+1. Preprocess the data for each data set using ``xpore dataprep``. Note that the ``--gtf_or_gff`` and ``--transcript_fasta`` arguments are required to map transcriptomic to genomic coordinates when the ``--genome`` option is chosen, so that xPore can run based on genome coordinates. However, GTF is the recommended option. If GFF is the only file available, please note that the GFF file works with GENCODE or ENSEMBL FASTA files, but not UCSC FASTA files. We plan to remove the requirement of FASTA files in a future release.(This step will take approximately 5h for 1 million reads)::
 
     # Within each dataset directory i.e. demo/data/HEK293T-METTL3-KO-rep1 and demo/data/HEK293T-WT-rep1, run
     xpore dataprep \
