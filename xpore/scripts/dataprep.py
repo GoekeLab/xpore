@@ -78,25 +78,25 @@ def parallel_index(eventalign_filepath,chunk_size,out_dir,n_processes,resume):
     # Wait for all of the tasks to finish.
     task_queue.join()
     
-def t2g(gene_id,fasta_dict,gtf_dict,g2t_mapping,df_eventalign_index,readcount_min):
+def t2g(gene_id,fasta_dict,annotation_dict,g2t_mapping,df_eventalign_index,readcount_min):
     tx_ids = []
     t2g_dict = {}
-    transcripts = [tx for tx in gtf_dict if tx in g2t_mapping[gene_id]]
+    transcripts = [tx for tx in annotation_dict if tx in g2t_mapping[gene_id]]
     n_reads = sum([len(df_eventalign_index.loc[tx]) for tx in transcripts])
     if n_reads >= readcount_min:
         for tx in transcripts:
-            tx_seq = fasta_dict[tx]
-            tx_contig = gtf_dict[tx]['chr']
+            tx_seq = fasta_dict[tx][0]
+            tx_contig = annotation_dict[tx]['chr']
             if tx_seq is None:
                 continue
-            for exon_num in range(len(gtf_dict[tx]['exon'])):
-                g_interval=gtf_dict[tx]['exon'][exon_num]
-                tx_interval=gtf_dict[tx]['tx_exon'][exon_num]
+            for exon_num in range(len(annotation_dict[tx]['exon'])):
+                g_interval=annotation_dict[tx]['exon'][exon_num]
+                tx_interval=annotation_dict[tx]['tx_exon'][exon_num]
                 for g_pos in range(g_interval[0],g_interval[1]+1): # Exclude the rims of exons.
                     dis_from_start = g_pos - g_interval[0]
-                    if gtf_dict[tx]['strand'] == "+":
+                    if annotation_dict[tx]['strand'] == "+":
                         tx_pos = tx_interval[0] + dis_from_start
-                    elif gtf_dict[tx]['strand'] == "-":
+                    elif annotation_dict[tx]['strand'] == "-":
                         tx_pos = tx_interval[1] - dis_from_start
                     if (g_interval[0] <= g_pos < g_interval[0]+2) or (g_interval[1]-2 < g_pos <= g_interval[1]): # Todo: To improve the mapping
                         kmer = 'XXXXX'
@@ -157,62 +157,106 @@ def combine(events_str):
         np_events = np.rec.fromrecords(df_events, names=[*df_events])
         return np_events
 
-def readFasta(transcript_fasta_paths_or_urls):
-    fasta=open(transcript_fasta_paths_or_urls,"r")
-    entries=""
+def readFasta(transcript_fasta,is_gff):
+    fasta=open(transcript_fasta,"r")
+    entries,separate_by_pipe="",False
     for ln in fasta:
         entries+=ln
     entries=entries.split(">")
+    if len(entries[1].split("|"))>1:
+        separate_by_pipe=True
     dict={}
     for entry in entries:
         entry=entry.split("\n")
-#        id=entry[0].split(".")[0]
         if len(entry[0].split()) > 0:
-            id=entry[0].split()[0]
+            id=entry[0].split('.')[0]
             seq="".join(entry[1:])
-            dict[id]=seq
+            dict[id]=[seq]
+            if is_gff > 0:
+                if separate_by_pipe == True:
+                    g_id=info[1],split(".")[0]
+                else:
+                    g_id=entry[0].split("gene:")[1].split(".")[0]
+                dict[id].append(g_id)
     return dict
 
-def readGTF(gtf_path_or_url):
-    gtf=open(gtf_path_or_url,"r")
-    dict={}
+def readAnnotation(gtf_or_gff):
+    gtf=open(gtf_or_gff,"r")
+    dict,is_gff={},0
     for ln in gtf:
         if not ln.startswith("#"):
             ln=ln.strip("\n").split("\t")
-            if ln[2] == "transcript" or ln[2] == "exon":
-                chr,type,start,end=ln[0],ln[2],int(ln[3]),int(ln[4])
-                attrList=ln[-1].split(";")
-                attrDict={}
-                for k in attrList:
-                    p=k.strip().split(" ")
-                    if len(p) == 2:
-                        attrDict[p[0]]=p[1].strip('\"')
-                ##tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
-                ##g_id=ln[-1].split('gene_id "')[1].split('";')[0]
-                tx_id = attrDict["transcript_id"]
-                g_id = attrDict["gene_id"]
-                if tx_id not in dict:
-                    dict[tx_id]={'chr':chr,'g_id':g_id,'strand':ln[6]}
-                    if type not in dict[tx_id]:
+            if is_gff == 0:
+                if ln[-1].startswith("ID") or ln[-1].startswith("Parent"):
+                    is_gff = 1
+                else:
+                    is_gff = -1
+            if is_gff < 0:
+                if ln[2] == "transcript" or ln[2] == "exon":
+                    chr,type,start,end=ln[0],ln[2],int(ln[3]),int(ln[4])
+                    attrList=ln[-1].split(";")
+                    attrDict={}
+                    for k in attrList:
+                        p=k.strip().split(" ")
+                        if len(p) == 2:
+                            attrDict[p[0]]=p[1].strip('\"')
+                    ##tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
+                    ##g_id=ln[-1].split('gene_id "')[1].split('";')[0]
+                    tx_id = attrDict["transcript_id"]
+                    g_id = attrDict["gene_id"]
+                    if tx_id not in dict:
+                        dict[tx_id]={'chr':chr,'g_id':g_id,'strand':ln[6]}
+                        if type not in dict[tx_id]:
+                            if type == "transcript":
+                                dict[tx_id][type]=(start,end)
+                    else:
+                        if type == "exon":
+                            if type not in dict[tx_id]:
+                                dict[tx_id][type]=[(start,end)]
+                            else:
+                                dict[tx_id][type].append((start,end))
+            if is_gff > 0:
+                if ln[2] == "exon" or ln[2] == "mRNA":
+                    chr,type,start,end=ln[0],ln[2],int(ln[3]),int(ln[4])
+                    tx_id=ln[-1].split('transcript:')[1].split(';')[0]
+                    if ln[2] == "mRNA":
+                        type="transcript"
+                    if tx_id not in dict:
+                        dict[tx_id]={'chr':chr,'strand':ln[6]}
                         if type == "transcript":
                             dict[tx_id][type]=(start,end)
-                else:
-                    if type == "exon":
-                        if type not in dict[tx_id]:
+                        if type == "exon":
                             dict[tx_id][type]=[(start,end)]
-                        else:
-                            dict[tx_id][type].append((start,end))
+                    else:
+                        if type == "transcript" and type not in dict[tx_id]:
+                            dict[tx_id][type]=(start,end)
+                        if type == "exon":
+                            if type not in dict[tx_id]:
+                                dict[tx_id][type]=[(start,end)]
+                            else:
+                                dict[tx_id][type].append((start,end))
     #convert genomic positions to tx positions
-    for id in dict:
-        tx_pos,tx_start=[],0
-        for pair in dict[id]["exon"]:
-            tx_end=pair[1]-pair[0]+tx_start
-            tx_pos.append((tx_start,tx_end))
-            tx_start=tx_end+1
-        dict[id]['tx_exon']=tx_pos
-    return dict
+    if is_gff < 0:
+        for id in dict:
+            tx_pos,tx_start=[],0
+            for pair in dict[id]["exon"]:
+                tx_end=pair[1]-pair[0]+tx_start
+                tx_pos.append((tx_start,tx_end))
+                tx_start=tx_end+1
+            dict[id]['tx_exon']=tx_pos
+    else:
+        for id in dict:
+            tx_pos,tx_start=[],0
+            if dict[id]["strand"] == "-":
+                dict[id]["exon"].sort(key=lambda tup: tup[0], reverse=True)
+            for pair in dict[id]["exon"]:
+                tx_end=pair[1]-pair[0]+tx_start
+                tx_pos.append((tx_start,tx_end))
+                tx_start=tx_end+1
+            dict[id]['tx_exon']=tx_pos
+    return (dict,is_gff)
 
-def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume):
+def parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_gff,out_dir,n_processes,readcount_min,readcount_max,resume):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -247,8 +291,15 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_p
     # Get all gene ids and create a dict of eventalign.combine index.
 #     gene_ids = set()
 
+    if is_gff > 0: ##add g_id from fasta dict entry if gff annotation is used
+        for tx_id in annotation_dict:
+            try:
+                annotation_dict[tx_id]['g_id']=fasta_dict[tx_id][1]
+            except KeyError:
+                continue
+
     df_eventalign_index = pd.read_csv(os.path.join(out_dir,'eventalign.index'))
-#    df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
+    df_eventalign_index['transcript_id'] = [tx_id.split('.')[0] for tx_id in  df_eventalign_index['transcript_id']]
 #    df_eventalign_index['transcript_id'] = [tx_id for tx_id in  df_eventalign_index['transcript_id']]
     df_eventalign_index.set_index('transcript_id',inplace=True)
     g2t_mapping = defaultdict(list)
@@ -256,7 +307,7 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_p
     for tx_id in set(df_eventalign_index.index):
         try:
 ##           g_id = ensembl.transcript_by_id(tx_id).gene_id 
-            g_id = gtf_dict[tx_id]['g_id'] 
+            g_id = annotation_dict[tx_id]['g_id'] 
         except KeyError:
             continue
         else:
@@ -288,7 +339,7 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_p
                 continue
             # mapping a gene <-> transcripts
 
-            n_reads, tx_ids, t2g_mapping = t2g(gene_id,fasta_dict,gtf_dict,g2t_mapping,df_eventalign_index,readcount_min)
+            n_reads, tx_ids, t2g_mapping = t2g(gene_id,fasta_dict,annotation_dict,g2t_mapping,df_eventalign_index,readcount_min)
             #
             if n_reads >= readcount_min: 
                 data_dict = dict()
@@ -363,7 +414,7 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
 #         if len(events_per_read) > 0:
         # ===== transcript to gene coordinates ===== # TODO: to use gtf.
 #        tx_ids = [tx_id.decode('UTF-8').split('.')[0] for tx_id in events_per_read['transcript_id']]
-        tx_ids = [tx_id for tx_id in events_per_read['transcript_id']] 
+        tx_ids = [tx_id.split('.')[0] for tx_id in events_per_read['transcript_id']] 
         tx_positions = events_per_read['transcriptomic_position']
         genomic_coordinate = list(itemgetter(*zip(tx_ids,tx_positions))(t2g_mapping)) # genomic_coordinates -- np structured array of 'chr','gene_id','genomic_position','kmer'
         genomic_coordinate = np.array(genomic_coordinate,dtype=np.dtype([('chr','<U2'),('gene_id','<U15'),('genomic_position','<i4'),('g_kmer','<U5')]))
@@ -635,37 +686,37 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):
 #                     assert row_eventalign['read_index'] == read_index 
 #                     eventalign_per_read = [row_eventalign]
 
-def check_gene_tx_id_version(gtf_path_or_url):
-    gtf=open(gtf_path_or_url,"r")
-    extra_version_fields=0
-    for i in range(25):
-        ln=gtf.readline().split('\t')
-        if not ln[0].startswith('#'):
-            if ln[2] == "transcript" or ln[2] == "exon":
-                check_transcript_version = len(ln[-1].split('transcript_version')) == 2
-                check_gene_version = len(ln[-1].split('gene_version')) == 2
-                if check_transcript_version and check_gene_version:
-                   extra_version_fields+=1
-    if extra_version_fields > 0:
-        return True
-    else:
-        return False
+#def check_gene_tx_id_version(gtf_or_gff):
+#    gtf=open(gtf_or_gff,"r")
+#    extra_version_fields=0
+#    for i in range(25):
+#        ln=gtf.readline().split('\t')
+#        if not ln[0].startswith('#'):
+#            if ln[2] == "transcript" or ln[2] == "exon":
+#                check_transcript_version = len(ln[-1].split('transcript_version')) == 2
+#                check_gene_version = len(ln[-1].split('gene_version')) == 2
+#                if check_transcript_version and check_gene_version:
+#                   extra_version_fields+=1
+#    if extra_version_fields > 0:
+#        return True
+#    else:
+#        return False
  
-def mergeGTFtxIDversion(gtf_path_or_url,out_dir):
-    gtf=open(gtf_path_or_url,"r")
-    new_gtf_path=os.path.join(out_dir,'transcript_id_version_merged.gtf')
-    new_gtf=open(new_gtf_path,"w")
-    for ln in gtf:
-        if not ln.startswith("#"):
-            ln=ln.split("\t")
-            if ln[2] == "transcript" or ln[2] == "exon":
-                g_id=ln[-1].split('gene_id "')[1].split('";')[0]
-                g_ver=ln[-1].split('; gene_version "')[1].split('";')[0]
-                tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
-                tx_ver=ln[-1].split('; transcript_version "')[1].split('";')[0]
-                new_gtf.write('\t'.join(ln[:-1])+'\t'+'gene_id "'+g_id+'.'+g_ver+'"; transcript_id "'+tx_id+'.'+tx_ver+'";'+'\n')
-    new_gtf.close()
-    return new_gtf_path
+#def mergeGTFtxIDversion(gtf_or_gff,out_dir):
+#    gtf=open(gtf_or_gff,"r")
+#    new_gtf_path=os.path.join(out_dir,'transcript_id_version_merged.gtf')
+#    new_gtf=open(new_gtf_path,"w")
+#    for ln in gtf:
+#        if not ln.startswith("#"):
+#            ln=ln.split("\t")
+#            if ln[2] == "transcript" or ln[2] == "exon":
+#                g_id=ln[-1].split('gene_id "')[1].split('";')[0]
+#                g_ver=ln[-1].split('; gene_version "')[1].split('";')[0]
+#                tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
+#                tx_ver=ln[-1].split('; transcript_version "')[1].split('";')[0]
+#                new_gtf.write('\t'.join(ln[:-1])+'\t'+'gene_id "'+g_id+'.'+g_ver+'"; transcript_id "'+tx_id+'.'+tx_ver+'";'+'\n')
+#    new_gtf.close()
+#    return new_gtf_path
 
 def dataprep(args):
     #
@@ -678,13 +729,13 @@ def dataprep(args):
     resume = args.resume
     genome = args.genome
 
-    if genome and (None in [args.gtf_path_or_url,args.transcript_fasta_paths_or_urls]):
+    if genome and (None in [args.gtf_or_gff,args.transcript_fasta]):
         print('please provide the following')
-        print('- gtf_path_or_url')
-        print('- transcript_fasta_paths_or_urls')
+        print('- gtf_or_gff')
+        print('- transcript_fasta')
     else:
-        gtf_path_or_url = args.gtf_path_or_url
-        transcript_fasta_paths_or_urls = args.transcript_fasta_paths_or_urls
+        gtf_or_gff = args.gtf_or_gff
+        transcript_fasta = args.transcript_fasta
         
     misc.makedirs(out_dir) #todo: check every level.
     
@@ -694,11 +745,11 @@ def dataprep(args):
     
     # (2) Create a .json file, where the info of all reads are stored per position, for modelling.
     if genome:
-        merge_transcript_id_version = check_gene_tx_id_version(gtf_path_or_url)
-        if merge_transcript_id_version:
-            gtf_path_or_url = mergeGTFtxIDversion(gtf_path_or_url,out_dir)
-        fasta_dict = readFasta(transcript_fasta_paths_or_urls)
-        gtf_dict = readGTF(gtf_path_or_url)
-        parallel_preprocess_gene(eventalign_filepath,fasta_dict,gtf_dict,out_dir,n_processes,readcount_min,readcount_max,resume)
+#        merge_transcript_id_version = check_gene_tx_id_version(gtf_or_gff)
+#        if merge_transcript_id_version:
+#            gtf_or_gff = mergeGTFtxIDversion(gtf_or_gff,out_dir)
+        annotation_dict,is_gff = readAnnotation(gtf_or_gff)
+        fasta_dict = readFasta(transcript_fasta,is_gff)
+        parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_gff,out_dir,n_processes,readcount_min,readcount_max,resume)
     else:
         parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume)

@@ -23,8 +23,8 @@ def parse_options(argv):
     required_dataprep.add_argument('--eventalign', dest='eventalign', help='eventalign filepath, the output from nanopolish.',required=True)
     ##required.add_argument('--summary', dest='summary', help='eventalign summary filepath, the output from nanopolish.',required=True)
     required_dataprep.add_argument('--out_dir', dest='out_dir', help='output directory.',required=True)
-    optional_dataprep.add_argument('--gtf_path_or_url', dest='gtf_path_or_url', help='GTF file path or url.',type=str)
-    optional_dataprep.add_argument('--transcript_fasta_paths_or_urls', dest='transcript_fasta_paths_or_urls', help='transcript FASTA paths or urls.',type=str)
+    optional_dataprep.add_argument('--gtf_or_gff', dest='gtf_or_gff', help='GTF or GFF file path.',type=str)
+    optional_dataprep.add_argument('--transcript_fasta', dest='transcript_fasta', help='transcript FASTA path.',type=str)
     # Optional arguments
     optional_dataprep.add_argument('--skip_eventalign_indexing', dest='skip_eventalign_indexing', help='skip indexing the eventalign nanopolish output.',default=False,action='store_true')
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
