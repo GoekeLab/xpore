@@ -27,6 +27,7 @@ def parse_options(argv):
     optional_dataprep.add_argument('--transcript_fasta', dest='transcript_fasta', help='transcript FASTA path.',type=str)
     # Optional arguments
     optional_dataprep.add_argument('--skip_eventalign_indexing', dest='skip_eventalign_indexing', help='skip indexing the eventalign nanopolish output.',default=False,action='store_true')
+    optional_dataprep.add_argument('--tombo', dest='tombo', help='using tombo resquiggle input.',default=False,action='store_true')
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
     optional_dataprep.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true') 
     optional_dataprep.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int, default=1)
