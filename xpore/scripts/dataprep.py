@@ -218,7 +218,13 @@ def readAnnotation(gtf_or_gff):
             if is_gff > 0:
                 if ln[2] == "exon" or ln[2] == "mRNA":
                     chr,type,start,end=ln[0],ln[2],int(ln[3]),int(ln[4])
-                    tx_id=ln[-1].split('transcript:')[1].split(';')[0]
+                    try:
+                        tx_id=ln[-1].split('transcript:')[1].split(';')[0]
+                    except IndexError:
+                        if ln[-1].startswith('ID=rna'):
+                            tx_id=ln[-1].split('rna-')[1].split(';')[0]
+                        elif ln[-1].startswith('ID=exon'):
+                            tx_id=ln[-1].split('exon-')[1].split(';')[0].split('-')[0]
                     if ln[2] == "mRNA":
                         type="transcript"
                     if tx_id not in dict:
