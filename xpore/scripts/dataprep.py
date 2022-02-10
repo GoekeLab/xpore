@@ -245,10 +245,11 @@ def readAnnotation(gtf_or_gff):
     if is_gff < 0:
         for id in dict:
             tx_pos,tx_start=[],0
-            for pair in dict[id]["exon"]:
-                tx_end=pair[1]-pair[0]+tx_start
-                tx_pos.append((tx_start,tx_end))
-                tx_start=tx_end+1
+            if "exon" in dict[id]:
+                for pair in dict[id]["exon"]:
+                    tx_end=pair[1]-pair[0]+tx_start
+                    tx_pos.append((tx_start,tx_end))
+                    tx_start=tx_end+1
             dict[id]['tx_exon']=tx_pos
     else:
         for id in dict:
