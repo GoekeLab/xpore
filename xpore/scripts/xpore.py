@@ -53,9 +53,14 @@ def parse_options(argv):
 
     ### RUN MODE "POSTPROCESSING"
     parser_postprocessing = subparsers.add_parser('postprocessing', help='run mode for post-processing diffmod.table, the result table from differential modification analysis.')
+    optional_postprocessing = parser_postprocessing._action_groups.pop()
     required_postprocessing = parser_postprocessing.add_argument_group('required arguments')
     # Required arguments
     required_postprocessing.add_argument('--diffmod_dir', dest='diffmod_dir', help='diffmod directory path, the output from xpore-diffmod.',required=True)
+    # Optional arguments
+    optional_postprocessing.add_argument('--gtf_or_gff', dest='gtf_or_gff', help='GTF or GFF file path.',type=str)
+    optional_postprocessing.add_argument('--genome', dest='genome', help='Indicate this if ran xpore dataprep with --genome',default=False,action='store_true')
+    parser_postprocessing._action_groups.append(optional_postprocessing)
     parser_postprocessing.set_defaults(func=postprocessing)
 
     return parser.parse_args(argv[1:])
