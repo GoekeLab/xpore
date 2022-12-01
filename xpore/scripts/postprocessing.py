@@ -20,8 +20,6 @@ def readAnnotation(gtf_or_gff):
                         p=k.strip().split(" ")
                         if len(p) == 2:
                             attrDict[p[0]]=p[1].strip('\"')
-                    ##tx_id=ln[-1].split('; transcript_id "')[1].split('";')[0]
-                    ##g_id=ln[-1].split('gene_id "')[1].split('";')[0]
                     tx_id = attrDict["transcript_id"]
                     g_id = attrDict["gene_id"]
                     g_name = attrDict["gene_name"]
@@ -42,15 +40,21 @@ def readAnnotation(gtf_or_gff):
                     tx_id=ln[-1].split('transcript:')[1].split(';')[0]
                     if ln[2] == "mRNA":
                         type="transcript"
+                        g_name=ln[-1].split('Name=')[1].split(';')[0].split('-')[0]
+                        g_id=ln[-1].split('gene:')[1].split(';')[0]
                     if tx_id not in dict:
                         dict[tx_id]={'chr':chr,'strand':ln[6]}
                         if type == "transcript":
                             dict[tx_id][type]=(start,end)
+                            dict[tx_id]['g_name']=g_name
+                            dict[tx_id]['g_id']=g_id
                         if type == "exon":
                             dict[tx_id][type]=[(start,end)]
                     else:
                         if type == "transcript" and type not in dict[tx_id]:
                             dict[tx_id][type]=(start,end)
+                            dict[tx_id]['g_name']=g_name
+                            dict[tx_id]['g_id']=g_id
                         if type == "exon":
                             if type not in dict[tx_id]:
                                 dict[tx_id][type]=[(start,end)]
@@ -82,7 +86,8 @@ def addChrGeneNameToDiffmodTab(annotation_dict,diffmod_table_path,genome,out_dir
         original_annotation_dict=annotation_dict
         annotation_dict={}
         for tx_id in original_annotation_dict:
-            annotation_dict[original_annotation_dict[tx_id]['g_id']]=original_annotation_dict[tx_id]
+            if 'g_id' in original_annotation_dict[tx_id]:
+                annotation_dict[original_annotation_dict[tx_id]['g_id']]=original_annotation_dict[tx_id]
     file=open(diffmod_table_path,"r")
     header=file.readline()
     entries=file.readlines()
