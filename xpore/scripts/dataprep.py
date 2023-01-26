@@ -241,7 +241,7 @@ def readAnnotation(gtf_or_gff):
             tx_pos,tx_start=[],0
             for pair in dict[id]["exon"]:
                 tx_end=pair[1]-pair[0]+tx_start
-                tx_pos.append((tx_start,tx_end))
+                tx_pos.append((tx_start+1,tx_end+1))
                 tx_start=tx_end+1
             dict[id]['tx_exon']=tx_pos
     else:
