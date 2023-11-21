@@ -55,7 +55,7 @@ We appreciate your feedback and questions! You can report any error or suggestio
 
 ### Contribution
 
-We appreciate contributions on bug fixes and potential new features. Please read our [Contribution Guidelines](https://github.com/GoekeLab/xpore/blob/contribution/CONTRIBUTING.md#how-to-contribute-to-xpore) for more information.
+We appreciate contributions on bug fixes and potential new features. Please read our [Contribution Guidelines](https://github.com/GoekeLab/xpore/blob/master/CONTRIBUTING.md) for more information.
 
 Thank you!
 
