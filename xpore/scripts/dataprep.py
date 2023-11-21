@@ -169,7 +169,7 @@ def readFasta(transcript_fasta,is_gff):
     for entry in entries:
         entry=entry.split("\n")
         if len(entry[0].split()) > 0:
-            id=entry[0].split('.')[0]
+            id=entry[0].split(' ')[0].split('.')[0]
             seq="".join(entry[1:])
             dict[id]=[seq]
             if is_gff > 0:
