@@ -6,20 +6,9 @@ import shutil
 import subprocess
 from xpore.scripts import diffmod
 
-#@pytest.fixture
-#def dataprep_args():
-#    return {
-#            'eventalign': os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/eventalign.txt"),
-#            'out_dir': 'dataprep',
-#            'readcount_min': 1,
-#            'readcount_max': 1000,
-#            'n_processes': 2
-#            }
-
 @pytest.fixture
 def diffmod_args():
     class DiffmodArgs:
-        #config = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml")
         outfile=open(os.path.join(os.path.abspath(os.path.dirname(__file__)),'neues_config.yml'),'w')
         for ln in open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml"),'r'):
             if 'rep1' in ln:
@@ -36,6 +25,14 @@ def diffmod_args():
     return DiffmodArgs
 
 def test_diffmod(diffmod_args):
-    #cmd = ['xpore diffmod --config',os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml"),'--n_processes 4']
-    #subprocess.run(' '.join(cmd), shell=True, check=True)
     diffmod.diffmod(diffmod_args)
+
+    assert(os.path.exists(os.path.join(os.path.abspath(os.path.dirname(__file__)), "out/diffmod.table")))
+    test_diffmod_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), "out/diffmod.table")
+    original_diffmod_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/original_diffmod.table")
+    test_diffmod_table=pd.read_csv(test_diffmod_path).sort_values(["id", "position", "kmer"]).reset_index(drop=True)
+    original_diffmod_table=pd.read_csv(original_diffmod_path).sort_values(["id", "position", "kmer"]).reset_index(drop=True)
+
+    assert(np.all(original_diffmod_table["id"] == test_diffmod_table["id"]))
+    assert(np.allclose(original_diffmod_table["diff_mod_rate_KO_vs_WT"], test_diffmod_table["diff_mod_rate_KO_vs_WT"]))
+    assert(np.allclose(original_diffmod_table["z_score_KO_vs_WT"], test_diffmod_table["z_score_KO_vs_WT"]))
