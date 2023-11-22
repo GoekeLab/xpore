@@ -18,17 +18,15 @@ from xpore.scripts import diffmod
 
 @pytest.fixture
 def diffmod_args():
-    return {
-            'config': os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml"),
-            'out_dir': 'diffmod',
-            'n_processes': 2,
-            'save_models': False,
-            'resume': False,
-            'ids': []
-            }
-
+    class DiffmodArgs:
+        config = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml")
+        n_processes = 2
+        save_models = False
+        resume = False
+        ids = []
+    return DiffmodArgs
 
 def test_diffmod(diffmod_args):
-    cmd = ['xpore diffmod --config',os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml"),'--n_processes 4']
-    subprocess.run(' '.join(cmd), shell=True, check=True)
-    #diffmod.diffmod(diffmod_args)
+    #cmd = ['xpore diffmod --config',os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml"),'--n_processes 4']
+    #subprocess.run(' '.join(cmd), shell=True, check=True)
+    diffmod.diffmod(diffmod_args)
