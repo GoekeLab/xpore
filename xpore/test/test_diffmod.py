@@ -20,7 +20,7 @@ from xpore.scripts import diffmod
 def diffmod_args():
     class DiffmodArgs:
         #config = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml")
-        outfile=open('neues_config.yml','w')
+        outfile=open(os.path.join(os.path.abspath(os.path.dirname(__file__)),'neues_config.yml'),'w')
         for ln in open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml"),'r'):
             if 'rep1' in ln:
                 ln=ln.split(':')
