@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 import os
 import shutil
+import subprocess
 from xpore.scripts import diffmod
 
 #@pytest.fixture
@@ -28,5 +29,6 @@ def diffmod_args():
 
 
 def test_diffmod(diffmod_args):
-    print(diffmod_args)
-    diffmod.diffmod(diffmod_args)
+    cmd = ['xpore diffmod --config',diffmod_args.config,'--out_dir diffmod']
+    subprocess.run(' '.join(cmd), shell=True, check=True)
+    #diffmod.diffmod(diffmod_args)
