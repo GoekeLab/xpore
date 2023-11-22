@@ -29,6 +29,6 @@ def diffmod_args():
 
 
 def test_diffmod(diffmod_args):
-    cmd = ['xpore diffmod --config',diffmod_args.config,'--out_dir diffmod']
+    cmd = ['xpore diffmod --config',os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml"),'--out_dir diffmod']
     subprocess.run(' '.join(cmd), shell=True, check=True)
     #diffmod.diffmod(diffmod_args)
