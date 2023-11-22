@@ -3,7 +3,6 @@ import numpy as np
 import pytest
 import os
 import shutil
-import subprocess
 from xpore.scripts import diffmod
 
 @pytest.fixture
@@ -24,6 +23,8 @@ def diffmod_args():
         ids = []
     return DiffmodArgs
 
+# the following runs the updated xpore diffmod from the PR and compares its diffmod.table to the diffmod.table generated
+# by the original xpore diffmod (as long as the z-scores, DMRs are not too off, it should be fine)
 def test_diffmod(diffmod_args):
     diffmod.diffmod(diffmod_args)
 
