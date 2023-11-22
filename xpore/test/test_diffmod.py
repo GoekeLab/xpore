@@ -24,7 +24,7 @@ def diffmod_args():
         for ln in open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/config.yml"),'r'):
             if 'rep1' in ln:
                 ln=ln.split(':')
-                outfile.write(': '.join([ln[0], os.path.join(os.path.abspath(os.path.dirname(__file__)),ln[-1].strip())]))
+                outfile.write(': '.join([ln[0], os.path.join(os.path.abspath(os.path.dirname(__file__)),ln[-1].strip())])+'\n')
             else:
                 outfile.write(ln)
         outfile.close()
