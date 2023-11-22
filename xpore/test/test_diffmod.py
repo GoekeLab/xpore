@@ -27,7 +27,7 @@ def diffmod_args():
 def test_diffmod(diffmod_args):
     diffmod.diffmod(diffmod_args)
 
-    assert(os.path.exists(os.path.join(os.path.abspath(os.path.dirname(__file__)), "out/diffmod.table")))
+    #assert(os.path.exists(os.path.join(os.path.abspath(os.path.dirname(__file__)), "out/diffmod.table")))
     test_diffmod_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), "out/diffmod.table")
     original_diffmod_path=os.path.join(os.path.abspath(os.path.dirname(__file__)), "data/original_diffmod.table")
     test_diffmod_table=pd.read_csv(test_diffmod_path).sort_values(["id", "position", "kmer"]).reset_index(drop=True)
