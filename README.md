@@ -51,12 +51,6 @@ Ploy N. Pratanwanich, et al. Identification of differential RNA modifications fr
 
 We appreciate your feedback and questions! You can report any error or suggestion related to xPore as an [issue on github](https://github.com/GoekeLab/xpore/issues). If you have questions related to the manuscript, data, or any general comment or suggestion please use the [Discussions](https://github.com/GoekeLab/xpore/discussions).
 
----
-
-### Contribution
-
-We appreciate contributions on bug fixes and potential new features. Please read our [Contribution Guidelines](https://github.com/GoekeLab/xpore/blob/master/CONTRIBUTING.md) for more information.
-
 Thank you!
 
 ---
