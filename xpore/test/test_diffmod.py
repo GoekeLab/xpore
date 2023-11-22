@@ -28,4 +28,5 @@ def diffmod_args():
 
 
 def test_diffmod(diffmod_args):
+    print(diffmod_args)
     diffmod.diffmod(diffmod_args)
