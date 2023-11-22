@@ -28,7 +28,7 @@ def diffmod_args():
             else:
                 outfile.write(ln)
         outfile.close()
-        config = os.path.join(os.getcwd(),'neues_config.yml')
+        config = os.path.join(os.path.abspath(os.path.dirname(__file__)),'neues_config.yml')
         n_processes = 2
         save_models = False
         resume = False
