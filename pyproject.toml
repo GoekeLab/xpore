@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "xpore"
+authors = [{name = "Ploy N. Pratanwanich", email= "naruemon.p@chula.ac.th"}]
+maintainers = [
+	{name = "Ploy N. Pratanwanich", email= "naruemon.p@chula.ac.th"},
+	{name = "Leon Rauschning"},
+]
+requires-python = ">=3.8"
+description="xpore is a python package for Nanopore data analysis of differential RNA modifications."
+dependencies = [
+	"numpy>=2.0.0",
+	"pandas>=2.0.0",
+	"scipy>=1.10.1",
+	"PyYAML",
+	"h5py>=3.0.0",
+	"pyensembl>=2.2.0",
+	"ujson>=4.0.1"
+]
+readme = "README.md"
+license = {text = "MIT"}
+classifiers = [
+	# Trove classifiers
+	# (https://pypi.python.org/pypi?%3Aaction=list_classifiers)
+	"Development Status :: 1 - Planning",
+	"License :: OSI Approved :: MIT License",
+	"Programming Language :: Python",
+	"Programming Language :: Python :: 3.8",
+	"Topic :: Software Development :: Libraries",
+	"Topic :: Scientific/Engineering :: Bio-Informatics",
+	"Intended Audience :: Science/Research",
+]
+dynamic = ["version"]
+
+[project.urls]
+homepage = "https://github.com/GoekeLab/xpore"
+
+[project.scripts]
+xpore = "xpore.scripts.xpore:main"
+
+[tool.setuptools]
+include-package-data = true # set explicitly in case it changes in the future
+
+[tool.setuptools.dynamic]
+version = {attr = "xpore.__version__"}
+

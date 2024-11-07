@@ -26,7 +26,7 @@ def calc_prob_overlapping(means, variances):
     else:
         return np.nan,[np.nan,np.nan,np.nan,np.nan]
 
-class NormalDist(object):
+class NormalDist:
     "Modified from the library statistics.py (Authors)(https://github.com/python/cpython/blob/3.8/Lib/statistics.py) which is under GPL-compatible license."
     def __init__(self, mu=0.0, sigma=1.0):
         self._mu = mu
@@ -41,7 +41,7 @@ class NormalDist(object):
         Measures the agreement between two normal probability distributions.
         Returns a value between 0.0 and 1.0 giving the overlapping area in
         the two underlying probability density functions.
-        """ 
+        """
         # See: "The overlapping coefficient as a measure of agreement between
         # probability distributions and point estimation of the overlap of two
         # normal densities" -- Henry F. Inman and Edwin L. Bradley Jr
