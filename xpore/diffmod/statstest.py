@@ -1,7 +1,7 @@
 import scipy.stats
 import numpy as np
 
-class StatsTest(object):
+class StatsTest:
     def __init__(self,data):
         if self.__isok(data):
             self.data = [data['y'][data['x'][:,0]==1],data['y'][data['x'][:,1]==1]] 

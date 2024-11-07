@@ -7,7 +7,7 @@ from ..utils import misc
 def get_condition_run_name(condition_name,run_name):
     return '-'.join([condition_name,run_name])
 
-class Configurator(object):
+class Configurator:
     def __init__(self, config_filepath):
         self.filepath = os.path.abspath(config_filepath)
         self.filename = self.filepath.split('/')[-1]

@@ -1,4 +1,4 @@
-![alt text](https://github.com/GoekeLab/xpore/blob/master/figures/xpore_textlogo.png "xPore")
+![alt text](./docs/xpore_textlogo.png "xPore")
 
 
 

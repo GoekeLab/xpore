@@ -4,7 +4,7 @@ import scipy.special
 import scipy.stats
 
 
-class GMM(object):  
+class GMM:  
     """
     1D multi-sample 2-Gaussian mixture model.
     """
@@ -121,6 +121,7 @@ class GMM(object):
                 if (diff < self.method['stopping_criteria']):
                     converged = True
                     break
+
         self.info['n_iterations'] = iteration
         self.info['converged'] = converged
         self.info['convergence_ratio'] = diff
@@ -131,7 +132,7 @@ class GMM(object):
 ################################
 
 
-class Constant(object):
+class Constant:
     """
     Constant node.
     """
@@ -140,7 +141,7 @@ class Constant(object):
         self.data = data
 
 
-class UnivariateNormalMixture(object):
+class UnivariateNormalMixture:
     def __init__(self, parents=None, data=None, inits=None):
 
         self.parents = parents
@@ -189,7 +190,7 @@ class UnivariateNormalMixture(object):
         self.params['variance'] = N_inverse * np.sum(self.parents['z'].expected()*(residuals**2), axis=-2)  # sum across reads => K
 
 
-class Bernoulli(object):
+class Bernoulli:
     def __init__(self, dim, parents=None, data=None, inits=None):
         self.params = dict()
         self.params['prob'] = np.full(dim, np.nan)
@@ -244,7 +245,7 @@ class Bernoulli(object):
     
 
 
-class Dirichlet(object):
+class Dirichlet:
     def __init__(self, dim, parents=None, data=None, inits=None, priors=None):  # dim - [,n_categories]
 
         self.priors = dict()
@@ -297,7 +298,7 @@ class Dirichlet(object):
         return scipy.special.gammaln(np.sum(alpha, axis=-1)) - np.sum(scipy.special.gammaln(alpha), axis=-1)
 
 
-class UnivariateNormalGamma(object):
+class UnivariateNormalGamma:
     def __init__(self, dim, parents=None, data=None, inits=None, priors=None):
 
         self.priors = dict.fromkeys(['location', 'lambda', 'alpha', 'beta'], np.full(dim, np.nan))  # alpha = shape, beta=rate

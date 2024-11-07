@@ -102,7 +102,7 @@ def diffmod(args):
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
     for out_filetype in ['model','table','log']:
-        out_paths[out_filetype] = os.path.join(paths['out_dir'],'diffmod.%s' %out_filetype)
+        out_paths[out_filetype] = os.path.join(paths['out_dir'], f"diffmod.{out_filetype}")
         locks[out_filetype] = multiprocessing.Lock()
         
     # Create communication queues.
@@ -140,8 +140,6 @@ def diffmod(args):
     
     # Load tasks into task_queue.
     # gene_ids = helper.get_gene_ids(config.filepath)
-#    gene_ids = ['ENSG00000168496','ENSG00000204388','ENSG00000123989','ENSG00000170144'] #test data; todo
-    # gene_ids = ['ENSG00000159111']    
     
     if len(ids) == 0:
         ids = helper.get_ids(f_index,data_info)
