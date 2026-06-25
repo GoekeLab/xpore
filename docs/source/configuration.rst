@@ -21,7 +21,14 @@ Only the ``data`` and ``out`` sections are required, other sections are optional
         ...
 
     out: <DIR_PATH_FOR_OUTPUTS>
-    
+
+    # Optional: path to a CSV of unmodified-RNA kmer signal priors with columns
+    # model_kmer,model_mean,model_stdv. If omitted, xpore-diffmod defaults to the
+    # bundled RNA004 5mer model (xpore/diffmod/RNA004_5mer_model.csv).
+    # For RNA002 data, set this to the bundled RNA002 model, e.g.:
+    #     prior: /path/to/xpore/diffmod/RNA002_5mer_model.csv
+    prior: <PATH_TO_PRIOR_CSV>
+
     criteria:
         readcount_min: <15>
         readcount_max: <1000>
