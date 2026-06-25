@@ -33,7 +33,7 @@ xPore is described in details in [Pratanwanich et al. *Nat Biotechnol* (2021)](h
 
 ### Release History
 
-The current release is xPore v2.1. 
+The current release is xPore v2.2, which adds support for genome-aligned eventalign output (via the new `--kmer_source model_kmer` flag) and RNA004 data (now the default `xpore-diffmod` prior). 
 
 Please refer to the github release history for previous releases: https://github.com/GoekeLab/xpore/releases
 

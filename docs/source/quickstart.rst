@@ -38,6 +38,9 @@ xPore is now compatible with genome alignment. See below for the minimal command
      - | ``xpore diffmod``
        | ``--config <config.yml>``
 
+Running Example Demo Data
+-------------------------
+
 Download and extract the demo dataset from our `zenodo <https://zenodo.org/record/5162402/files/demo.tar.gz>`_::
 
     wget https://zenodo.org/record/5162402/files/demo.tar.gz
@@ -96,8 +99,12 @@ Below is how it looks like::
 
     out: ./out # output dir
 
+    # The demo data is RNA002. Since v2.2 the default prior is the RNA004 model,
+    # so point xpore-diffmod at the bundled RNA002 model to reproduce the demo:
+    prior: /path/to/xpore/diffmod/RNA002_5mer_model.csv
 
-See the :ref:`Configuration file page <configuration>` for more details.
+
+See the :ref:`Configuration file page <configuration>` for more details. Note that since xPore v2.2 the default unmodified-signal prior is the RNA004 model; for RNA002 data (like this demo) set ``prior:`` to the bundled ``RNA002_5mer_model.csv`` as shown above.
 
 3. Now that we have the data and the configuration file ready for modelling differential modifications using ``xpore-diffmod``. 
 
