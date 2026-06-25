@@ -33,7 +33,7 @@ def parse_options(argv):
     optional_dataprep.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int, default=1)
     optional_dataprep.add_argument('--chunk_size', dest='chunk_size', help='number of lines from nanopolish eventalign.txt for processing.',type=int, default=1000000)
     optional_dataprep.add_argument('--readcount_min', dest='readcount_min', help='minimum read counts per gene.',type=int, default=1)
-    optional_dataprep.add_argument('--readcount_max', dest='readcount_max', help='maximum read counts per gene.',type=int, default=1000)
+    optional_dataprep.add_argument('--readcount_max', dest='readcount_max', help='maximum read counts per site. Use None for no limit.',type=lambda x: None if x == 'None' else int(x), default=1000)
     optional_dataprep.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') #todo
     parser_dataprep._action_groups.append(optional_dataprep)
     parser_dataprep.set_defaults(func=dataprep)
@@ -47,7 +47,7 @@ def parse_options(argv):
     # Optional arguments
     optional_diffmod.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int,default=1)
     optional_diffmod.add_argument('--save_models', dest='save_models', help='with this argument, the program will save the model parameters for each id.',default=False,action='store_true') # todo
-    optional_diffmod.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true') 
+    optional_diffmod.add_argument('--resume', dest='resume', help='with this argument, the program will resume from the previous run.',default=False,action='store_true')
     optional_diffmod.add_argument('--ids', dest='ids', help='gene or transcript ids to model.',default=[],nargs='*')
     parser_diffmod._action_groups.append(optional_diffmod)
     parser_diffmod.set_defaults(func=diffmod)

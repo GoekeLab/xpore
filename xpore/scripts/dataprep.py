@@ -379,14 +379,10 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_g
                             if data.size > 1:
                                 data_dict[read_index] = data
                         readcount += 1
-                        if readcount > readcount_max:
-                            break
 
-                    if readcount > readcount_max:
-                        break
                 if len(data_dict)>=readcount_min:
 #                     print(gene_id,len(data_dict)) #len(data_dict) is the number of reads to be processed.
-                    task_queue.put((gene_id,data_dict,kmer_col,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available.
+                    task_queue.put((gene_id,data_dict,kmer_col,t2g_mapping,readcount_max,out_paths)) # Blocked if necessary until a free slot is available.
                     gene_ids_processed += [gene_id]
 
 
@@ -400,7 +396,7 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_g
         f.write('Total %d genes.\n' %len(gene_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess_gene(gene_id,data_dict,kmer_col,t2g_mapping,out_paths,locks):
+def preprocess_gene(gene_id,data_dict,kmer_col,t2g_mapping,readcount_max,out_paths,locks):
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
@@ -485,22 +481,27 @@ def preprocess_gene(gene_id,data_dict,kmer_col,t2g_mapping,out_paths,locks):
     asserted = True
 #     for key_tuple,y_array,g_kmer_array in zip(key_tuples,y_arrays,g_kmer_arrays):
     for position,y_array,g_kmer_array,g_positions_array in zip(unique_positions,y_arrays,g_kmer_arrays,g_positions_arrays):
-#         gene_id,position,kmer = key_tuple            
+#         gene_id,position,kmer = key_tuple
+        # Cap reads per site (not per gene) to readcount_max; None means no limit
+        if readcount_max is not None and len(y_array) > readcount_max:
+            y_array = y_array[:readcount_max]
+            g_kmer_array = g_kmer_array[:readcount_max]
+            g_positions_array = g_positions_array[:readcount_max]
         if (len(set(g_kmer_array)) == 1) and ('XXXXX' in set(g_kmer_array)) or (len(y_array) == 0):
             continue
-            
+
         if 'XXXXX' in set(g_kmer_array):
-            y_array = y_array[g_kmer_array != 'XXXXX']  
+            y_array = y_array[g_kmer_array != 'XXXXX']
             assert len(y_array) == len(g_kmer_array) - (g_kmer_array=='XXXXX').sum()
-            g_kmer_array = g_kmer_array[g_kmer_array != 'XXXXX']  
-            
+            g_kmer_array = g_kmer_array[g_kmer_array != 'XXXXX']
+
         try:
             assert len(set(g_kmer_array)) == 1
             assert list(set(g_kmer_array))[0].count('N') == 0 ##to weed out the mapped kmers from tx_seq that contain 'N', which is not in diffmod's model_kmer
             assert {position} == set(g_positions_array)
         except:
             asserted = False
-            break
+            continue  # skip this position, don't stop processing remaining positions
         kmer = set(g_kmer_array).pop()
 
         data[position] = {kmer: list(y_array)} #,'read_ids': [read_id.decode('UTF-8') for read_id in read_id_array]}
@@ -580,10 +581,8 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
                     if data.size > 1:
                         data_dict[read_index] = data
                 readcount += 1
-                if readcount > readcount_max:
-                    break
             if readcount>=readcount_min:
-                task_queue.put((tx_id,data_dict,kmer_col,out_paths)) # Blocked if necessary until a free slot is available.
+                task_queue.put((tx_id,data_dict,kmer_col,readcount_max,out_paths)) # Blocked if necessary until a free slot is available.
                 tx_ids_processed += [tx_id]
 
     # Put the stop task into task_queue.
@@ -596,7 +595,7 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
         f.write('Total %d transcripts.\n' %len(tx_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess_tx(tx_id,data_dict,kmer_col,out_paths,locks):
+def preprocess_tx(tx_id,data_dict,kmer_col,readcount_max,out_paths,locks):
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
@@ -658,6 +657,10 @@ def preprocess_tx(tx_id,data_dict,kmer_col,out_paths,locks):
     for position,y_array,kmer_array in zip(unique_positions,y_arrays,kmer_arrays):
 
         position = int(position)
+        # Cap reads per site (not per transcript) to readcount_max; None means no limit
+        if readcount_max is not None and len(y_array) > readcount_max:
+            y_array = y_array[:readcount_max]
+            kmer_array = kmer_array[:readcount_max]
         if (len(set(kmer_array)) == 1) and ('XXXXX' in set(kmer_array)) or (len(y_array) == 0):
             continue
 
@@ -671,7 +674,7 @@ def preprocess_tx(tx_id,data_dict,kmer_col,out_paths,locks):
             assert list(set(kmer_array))[0].count('N') == 0 ##to weed out the mapped kmers from tx_seq that contain 'N', which is not in diffmod's model_kmer
         except:
             asserted = False
-            break
+            continue  # skip this position, don't stop processing remaining positions
         kmer = set(kmer_array).pop()
 
         data[position][kmer] = list(np.around(y_array,decimals=2))
