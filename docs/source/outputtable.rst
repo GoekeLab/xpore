@@ -18,6 +18,6 @@ mu_mod                                      inferred mean of the modified RNAs d
 sigma2_unmod                                inferred sigma^2 of the unmodified RNAs distribution
 sigma2_mod                                  inferred sigma^2 of the modified RNAs distribution
 conf_mu_unmod                               confidence level of mu_unmod compared to the unmodified reference signal
-conf_mu_mod                                 confidence level of mu_unmod compared to the unmodified reference signal
+conf_mu_mod                                 confidence level of mu_mod compared to the unmodified reference signal
 mod_assignment                              lower if mu_mod < mu_unmod and higher if mu_mod > mu_unmod
 ==========================================  ========================================================================================================================================

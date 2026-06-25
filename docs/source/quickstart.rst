@@ -3,6 +3,41 @@
 Quickstart - Detection of differential RNA modifications
 =========================================================
 
+.. note::
+   **Updates in xPore v2.2:** xPore is now compatible with genome alignments and RNA004 data — see the table below and the :ref:`Data preparation from raw reads <preparation>` section for more information.
+
+xPore is now compatible with genome alignment. See below for the minimal commands to run xPore on transcriptome- or genome-aligned data:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 48 30
+
+   * -
+     - **Dataprep**
+     - **Diffmod**
+   * - Transcriptome alignment (output transcriptome coordinates)
+     - | ``xpore dataprep``
+       | ``--eventalign <eventalign.txt>``
+       | ``--out_dir <out_dir>``
+     - | ``xpore diffmod``
+       | ``--config <config.yml>``
+   * - Transcriptome alignment (output genome coordinates)
+     - | ``xpore dataprep``
+       | ``--eventalign <eventalign.txt>``
+       | ``--out_dir <out_dir>``
+       | ``--genome``
+       | ``--transcript_fasta <transcript.fa>``
+       | ``--gtf_or_gff <annotation.gtf>``
+     - | ``xpore diffmod``
+       | ``--config <config.yml>``
+   * - Genome alignment
+     - | ``xpore dataprep``
+       | ``--eventalign <eventalign.txt>``
+       | ``--out_dir <out_dir>``
+       | ``--kmer_source model_kmer``
+     - | ``xpore diffmod``
+       | ``--config <config.yml>``
+
 Download and extract the demo dataset from our `zenodo <https://zenodo.org/record/5162402/files/demo.tar.gz>`_::
 
     wget https://zenodo.org/record/5162402/files/demo.tar.gz

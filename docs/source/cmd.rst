@@ -17,12 +17,13 @@ Argument name                       Required    Default value         Descriptio
 =================================   ==========  ===================  ============================================================================================================
 --eventalign=FILE                   Yes         NA                    Eventalign filepath, the output from nanopolish.         
 --out_dir=DIR                       Yes         NA                    Output directory.
---gtf_path_or_url                   No          NA                    GTF file path or url used for mapping transcriptomic to genomic coordinates.
---transcript_fasta_paths_or_urls    No          NA                    Transcript FASTA paths or urls used for mapping transcriptomic to genomic coordinates.
+--gtf_or_gff=FILE                   No          NA                    GTF or GFF file path used for mapping transcriptomic to genomic coordinates.
+--transcript_fasta=FILE             No          NA                    Transcript FASTA path used for mapping transcriptomic to genomic coordinates.
 --skip_eventalign_indexing          No          False                 To skip indexing the eventalign nanopolish output.
 --genome                            No          False                 To run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates.
+--kmer_source=STR                   No          reference_kmer        Which kmer column to use from the eventalign file: ``reference_kmer`` (default, for transcriptome alignments) or ``model_kmer`` (for genome alignments, which contain reverse-strand reads).
 --n_processes=NUM                   No          1                     Number of processes to run.
---readcount_max=NUM                 No          1000                  Maximum read counts per gene.
+--readcount_max=NUM                 No          1000                  Maximum read counts per site. Use None for no limit.
 --readcount_min=NUM                 No          1                     Minimum read counts per gene.
 --resume                            No          False                 With this argument, the program will resume from the previous run.
 =================================   ==========  ===================  ============================================================================================================
