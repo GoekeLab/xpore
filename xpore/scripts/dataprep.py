@@ -108,18 +108,39 @@ def t2g(gene_id,fasta_dict,annotation_dict,g2t_mapping,df_eventalign_index,readc
                 
     return n_reads, tx_ids, t2g_dict
 
-def combine(events_str):
+def combine(events_str,kmer_source='reference_kmer'):
     f_string = StringIO(events_str)
     eventalign_result = pd.read_csv(f_string,delimiter='\t',names=['contig','position','reference_kmer','read_index',
                          'strand','event_index','event_level_mean','event_stdv','event_length','model_kmer',
                          'model_mean', 'model_stdv', 'standardized_level', 'start_idx', 'end_idx'])
     f_string.close()
-    cond_successfully_eventaligned = eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
+
+    # Reverse complement helper for matching genome-aligned reads where
+    # reference_kmer may be the reverse complement of model_kmer
+    def _revcomp(seq):
+        comp = str.maketrans('ACGT','TGCA')
+        return seq.translate(comp)[::-1]
+
+    # When using model_kmer, accept both direct and reverse-complement matches
+    # (genome alignments can have reverse-oriented reads).
+    # When using reference_kmer, only accept exact matches (same as xPore v2.1 behaviour)
+    if kmer_source == 'model_kmer':
+        cond_successfully_eventaligned = (
+            (eventalign_result['reference_kmer'] == eventalign_result['model_kmer']) |
+            (eventalign_result['reference_kmer'].apply(_revcomp) == eventalign_result['model_kmer'])
+        )
+    else:
+        cond_successfully_eventaligned = (
+            eventalign_result['reference_kmer'] == eventalign_result['model_kmer']
+        )
     if cond_successfully_eventaligned.sum() != 0:
 
         eventalign_result = eventalign_result[cond_successfully_eventaligned]
 
-        keys = ['read_index','contig','position','reference_kmer'] # for groupby
+        # Select kmer column based on kmer_source flag: model_kmer for genome alignments,
+        # reference_kmer for transcriptome alignments
+        kmer_col = 'model_kmer' if kmer_source == 'model_kmer' else 'reference_kmer'
+        keys = ['read_index','contig','position',kmer_col] # for groupby
         eventalign_result['length'] = pd.to_numeric(eventalign_result['end_idx'])-pd.to_numeric(eventalign_result['start_idx'])
         eventalign_result['sum_norm_mean'] = pd.to_numeric(eventalign_result['event_level_mean']) * eventalign_result['length']
             
@@ -151,11 +172,12 @@ def combine(events_str):
 #         df_events = eventalign_result[['read_index']+features]
 #         # print(df_events.head())
 
-        features = ['transcript_id','transcriptomic_position','reference_kmer','norm_mean']
+        # Use the selected kmer column in the output features
+        features = ['transcript_id','transcriptomic_position',kmer_col,'norm_mean']
 #        np_events = eventalign_result[features].reset_index().values.ravel().view(dtype=[('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')])
         df_events = eventalign_result[features]
         np_events = np.rec.fromrecords(df_events, names=[*df_events])
-        return np_events
+        return np_events, kmer_col
 
 def readFasta(transcript_fasta,is_gff):
     fasta=open(transcript_fasta,"r")
@@ -256,7 +278,7 @@ def readAnnotation(gtf_or_gff):
             dict[id]['tx_exon']=tx_pos
     return (dict,is_gff)
 
-def parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_gff,out_dir,n_processes,readcount_min,readcount_max,resume):
+def parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_gff,out_dir,n_processes,readcount_min,readcount_max,resume,kmer_source='reference_kmer'):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -349,11 +371,14 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_g
                         read_index,pos_start,pos_end = row['read_index'],row['pos_start'],row['pos_end']
                         eventalign_result.seek(pos_start,0)
                         events_str = eventalign_result.read(pos_end-pos_start)
-                        data = combine(events_str)
+                        # Pass kmer_source to combine so it selects the correct kmer column
+                        result = combine(events_str,kmer_source)
                         #data = np.genfromtxt(f_string,delimiter=',',dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
-                        if (data is not None) and (data.size > 1):
-                            data_dict[read_index] = data
-                        readcount += 1 
+                        if (result is not None):
+                            data, kmer_col = result
+                            if data.size > 1:
+                                data_dict[read_index] = data
+                        readcount += 1
                         if readcount > readcount_max:
                             break
 
@@ -361,7 +386,7 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_g
                         break
                 if len(data_dict)>=readcount_min:
 #                     print(gene_id,len(data_dict)) #len(data_dict) is the number of reads to be processed.
-                    task_queue.put((gene_id,data_dict,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available. 
+                    task_queue.put((gene_id,data_dict,kmer_col,t2g_mapping,out_paths)) # Blocked if necessary until a free slot is available.
                     gene_ids_processed += [gene_id]
 
 
@@ -375,7 +400,7 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_g
         f.write('Total %d genes.\n' %len(gene_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):  
+def preprocess_gene(gene_id,data_dict,kmer_col,t2g_mapping,out_paths,locks):
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
@@ -423,7 +448,8 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
         # Based on Ensembl, remove transcript version.
 
         events_per_read['transcript_id'] = tx_ids
-        events_per_read = np.array(events_per_read,dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), ('reference_kmer', 'S5'), ('norm_mean', '<f8')]))
+        # Use dynamic kmer_col (reference_kmer or model_kmer) in the dtype based on kmer_source
+        events_per_read = np.array(events_per_read,dtype=np.dtype([('transcript_id', 'S15'), ('transcriptomic_position', '<i8'), (kmer_col, 'S5'), ('norm_mean', '<f8')]))
 
         #
 
@@ -502,7 +528,7 @@ def preprocess_gene(gene_id,data_dict,t2g_mapping,out_paths,locks):
         f.write(log_str + '\n')
 
 
-def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume):
+def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume,kmer_source='reference_kmer'):
     
     # Create output paths and locks.
     out_paths,locks = dict(),dict()
@@ -547,14 +573,17 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
                 read_index,pos_start,pos_end = row['read_index'],row['pos_start'],row['pos_end']
                 eventalign_result.seek(pos_start,0)
                 events_str = eventalign_result.read(pos_end-pos_start)
-                data = combine(events_str)
-                if (data is not None) and (data.size > 1):
-                    data_dict[read_index] = data
-                readcount += 1 
+                # Pass kmer_source to combine so it selects the correct kmer column
+                result = combine(events_str,kmer_source)
+                if (result is not None):
+                    data, kmer_col = result
+                    if data.size > 1:
+                        data_dict[read_index] = data
+                readcount += 1
                 if readcount > readcount_max:
                     break
             if readcount>=readcount_min:
-                task_queue.put((tx_id,data_dict,out_paths)) # Blocked if necessary until a free slot is available. 
+                task_queue.put((tx_id,data_dict,kmer_col,out_paths)) # Blocked if necessary until a free slot is available.
                 tx_ids_processed += [tx_id]
 
     # Put the stop task into task_queue.
@@ -567,7 +596,7 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
         f.write('Total %d transcripts.\n' %len(tx_ids_processed))
         f.write(helper.decor_message('successfully finished'))
 
-def preprocess_tx(tx_id,data_dict,out_paths,locks): 
+def preprocess_tx(tx_id,data_dict,kmer_col,out_paths,locks):
     """
     Convert transcriptomic to genomic coordinates for a gene.
     
@@ -603,39 +632,49 @@ def preprocess_tx(tx_id,data_dict,out_paths,locks):
         
     events = np.concatenate(events)
    
-    # Sort and split 
-    idx_sorted = np.argsort(events['transcriptomic_position'])
-    unique_positions, index = np.unique(events['transcriptomic_position'][idx_sorted],return_index = True)
+    # Sort and split
+    if kmer_col == 'model_kmer':
+        # Group by (position, kmer) so forward/reverse reads at the same position
+        # produce separate entries with their respective kmers
+        idx_sorted = np.lexsort((events[kmer_col], events['transcriptomic_position']))
+        positions_sorted = events['transcriptomic_position'][idx_sorted]
+        kmers_sorted = events[kmer_col][idx_sorted]
+        compound_keys = np.array(list(zip(positions_sorted, kmers_sorted)),
+                                 dtype=[('pos', positions_sorted.dtype), ('kmer', kmers_sorted.dtype)])
+        unique_pairs, index = np.unique(compound_keys, return_index=True)
+        unique_positions = unique_pairs['pos']
+    else:
+        idx_sorted = np.argsort(events['transcriptomic_position'])
+        unique_positions, index = np.unique(events['transcriptomic_position'][idx_sorted], return_index=True)
     y_arrays = np.split(events['norm_mean'][idx_sorted], index[1:])
-#    read_id_arrays = np.split(events['read_id'][idx_sorted], index[1:])
-    reference_kmer_arrays = np.split(events['reference_kmer'][idx_sorted], index[1:])
+    kmer_arrays = np.split(events[kmer_col][idx_sorted], index[1:])
 
     # Prepare
     # print('Reformating the data for each genomic position ...')
     data = defaultdict(dict)
     # for each position, make it ready for json dump
     asserted = True
-#     for key_tuple,y_array,reference_kmer_array in zip(key_tuples,y_arrays,reference_kmer_arrays):
-    for position,y_array,reference_kmer_array in zip(unique_positions,y_arrays,reference_kmer_arrays):
-        
+#     for key_tuple,y_array,kmer_array in zip(key_tuples,y_arrays,kmer_arrays):
+    for position,y_array,kmer_array in zip(unique_positions,y_arrays,kmer_arrays):
+
         position = int(position)
-        if (len(set(reference_kmer_array)) == 1) and ('XXXXX' in set(reference_kmer_array)) or (len(y_array) == 0):
+        if (len(set(kmer_array)) == 1) and ('XXXXX' in set(kmer_array)) or (len(y_array) == 0):
             continue
-            
-        if 'XXXXX' in set(reference_kmer_array):
-            y_array = y_array[reference_kmer_array != 'XXXXX']  
-            assert len(y_array) == len(reference_kmer_array) - (reference_kmer_array=='XXXXX').sum()
-            reference_kmer_array = reference_kmer_array[reference_kmer_array != 'XXXXX']  
-            
+
+        if 'XXXXX' in set(kmer_array):
+            y_array = y_array[kmer_array != 'XXXXX']
+            assert len(y_array) == len(kmer_array) - (kmer_array=='XXXXX').sum()
+            kmer_array = kmer_array[kmer_array != 'XXXXX']
+
         try:
-            assert len(set(reference_kmer_array)) == 1
-            assert list(set(reference_kmer_array))[0].count('N') == 0 ##to weed out the mapped kmers from tx_seq that contain 'N', which is not in diffmod's model_kmer
+            assert len(set(kmer_array)) == 1
+            assert list(set(kmer_array))[0].count('N') == 0 ##to weed out the mapped kmers from tx_seq that contain 'N', which is not in diffmod's model_kmer
         except:
             asserted = False
             break
-        kmer = set(reference_kmer_array).pop()
+        kmer = set(kmer_array).pop()
 
-        data[position] = {kmer: list(np.around(y_array,decimals=2))}
+        data[position][kmer] = list(np.around(y_array,decimals=2))
         
     # write to file.
     log_str = '%s: %s.' %(tx_id,asserted)
@@ -728,6 +767,20 @@ def dataprep(args):
     readcount_max = args.readcount_max
     resume = args.resume
     genome = args.genome
+    kmer_source = args.kmer_source
+
+    # Check for likely genome alignment when user has selected reference_kmer
+    if kmer_source == 'reference_kmer':
+        with open(eventalign_filepath,'r') as f:
+            first_line = f.readline()
+            if first_line:
+                contig = first_line.split('\t')[0]
+                if contig.startswith('chr'):
+                    raise ValueError(
+                        "It looks like you are using a genome alignment (reference name '%s' starts with 'chr'), "
+                        "but --kmer_source is set to 'reference_kmer'. Genome alignments can contain reverse-oriented "
+                        "reads, using reference_kmer will cause all reverse reads to be filtered. Please use '--kmer_source model_kmer' instead." % contig
+                    )
 
     if genome and (None in [args.gtf_or_gff,args.transcript_fasta]):
         print('please provide the following')
@@ -750,6 +803,6 @@ def dataprep(args):
 #            gtf_or_gff = mergeGTFtxIDversion(gtf_or_gff,out_dir)
         annotation_dict,is_gff = readAnnotation(gtf_or_gff)
         fasta_dict = readFasta(transcript_fasta,is_gff)
-        parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_gff,out_dir,n_processes,readcount_min,readcount_max,resume)
+        parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_gff,out_dir,n_processes,readcount_min,readcount_max,resume,kmer_source)
     else:
-        parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume)
+        parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min,readcount_max,resume,kmer_source)

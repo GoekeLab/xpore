@@ -28,7 +28,8 @@ def parse_options(argv):
     # Optional arguments
     optional_dataprep.add_argument('--skip_eventalign_indexing', dest='skip_eventalign_indexing', help='skip indexing the eventalign nanopolish output.',default=False,action='store_true')
     # parser.add_argument('--features', dest='features', help='Signal features to extract.',type=list,default=['norm_mean'])
-    optional_dataprep.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true') 
+    optional_dataprep.add_argument('--genome', dest='genome', help='to run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates',default=False,action='store_true')
+    optional_dataprep.add_argument('--kmer_source', dest='kmer_source', help='kmer column to use from eventalign: reference_kmer (default, for transcriptome alignments) or model_kmer (for genome alignments).',type=str, choices=['reference_kmer','model_kmer'], default='reference_kmer')
     optional_dataprep.add_argument('--n_processes', dest='n_processes', help='number of processes to run.',type=int, default=1)
     optional_dataprep.add_argument('--chunk_size', dest='chunk_size', help='number of lines from nanopolish eventalign.txt for processing.',type=int, default=1000000)
     optional_dataprep.add_argument('--readcount_min', dest='readcount_min', help='minimum read counts per gene.',type=int, default=1)
