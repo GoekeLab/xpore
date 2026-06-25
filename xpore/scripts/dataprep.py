@@ -353,6 +353,10 @@ def parallel_preprocess_gene(eventalign_filepath,fasta_dict,annotation_dict,is_g
     # Load tasks into task_queue.    
     gene_ids_processed = []
 
+    # kmer_col == kmer_source (argparse restricts it to a valid column name); bind it up front so it
+    # is always defined even if no read in this gene returns a result from combine() (avoids NameError).
+    kmer_col = kmer_source
+
     with open(eventalign_filepath,'r') as eventalign_result:
 
         for gene_id in g2t_mapping:
@@ -566,6 +570,9 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
     tx_ids = df_eventalign_index['transcript_id'].values.tolist()
     tx_ids = list(dict.fromkeys(tx_ids))
     df_eventalign_index.set_index('transcript_id',inplace=True)
+    # kmer_col == kmer_source (argparse restricts it to a valid column name); bind it up front so it
+    # is always defined even if no read in this transcript returns a result from combine() (avoids NameError).
+    kmer_col = kmer_source
     with open(eventalign_filepath,'r') as eventalign_result:
         for tx_id in tx_ids:
             data_dict = dict()
