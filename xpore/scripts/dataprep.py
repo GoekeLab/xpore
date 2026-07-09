@@ -604,21 +604,23 @@ def parallel_preprocess_tx(eventalign_filepath,out_dir,n_processes,readcount_min
 
 def preprocess_tx(tx_id,data_dict,kmer_col,readcount_max,out_paths,locks):
     """
-    Convert transcriptomic to genomic coordinates for a gene.
-    
+    Reshape one aligned reference's per-read events into per-position signal arrays.
+
+    Transcriptome mode (no --genome) (or genome alignment mode): positions stay in original reference coordinates;
+    no conversion to genomic coordinates for tx alignments is done here (that's preprocess_gene). Groups reads at each
+    position, caps them at readcount_max, checks k-mer consistency, and appends the
+    result to the data.json / .index / .readcount / .log files. Returns None.
+
     Parameters
     ----------
-        tx_id: str
-            Transcript ID.
-        data_dict: {read_id:events_array}
-            Events for each read.
-        features: [str] # todo
-            A list of features to collect from the reads that are aligned to each genomic coordinate in the output.
-    Returns
-    -------
-    dict
-        A dict of all specified features collected for each genomic coordinate.
+    tx_id : str                     Reference (for tx alignments, Transcript ID).
+    data_dict : {read_index: events_array}   Per-read arrays from combine().
+    kmer_col : str                  'reference_kmer' or 'model_kmer'.
+    readcount_max : int or None     Per-site read cap; None means no cap.
+    out_paths, locks : dict         Output file paths and their write locks.
+    
     """
+
     
     # features = ['read_id','transcript_id','transcriptomic_position','reference_kmer','norm_mean','start_idx','end_idx'] # columns in the eventalign file per read.
 
