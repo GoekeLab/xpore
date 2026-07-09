@@ -30,6 +30,7 @@ setup(
             'ujson>=4.0.1'
             ],
     python_requires=">=3.8",
+    extras_require={'test': ['pytest']},
     entry_points={'console_scripts': ["xpore={}.scripts.xpore:main".format(__pkg_name__)]},
     classifiers=[
         # Trove classifiers
