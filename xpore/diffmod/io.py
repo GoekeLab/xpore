@@ -43,19 +43,58 @@ def load_data(idx, data_dict, min_count, max_count, pooling=False):
         y, read_ids, condition_labels, run_labels = [], [], [], []
         n_reads = defaultdict(list)
         
-        for (condition_name,run_name), d_dict in data_dict.items():
-            if d_dict is not None:
-                norm_means = d_dict[idx][pos][kmer]#['norm_means']
-                n_reads_per_run = len(norm_means)
-                # In case of pooling==False, if not enough reads, don't include them. 
-                if (not pooling) and ((n_reads_per_run < min_count) or (n_reads_per_run > max_count)):
-                    continue
-                #
-                n_reads[condition_name] += [n_reads_per_run]
-                y += norm_means
-                # read_ids += list(data_dict[run_name][idx][pos][kmer]['read_ids'][:])
-                condition_labels += [condition_name]*n_reads_per_run
-                run_labels += [run_name]*n_reads_per_run
+        if not pooling:
+            for (condition_name,run_name), d_dict in data_dict.items():
+                if d_dict is not None:
+                    norm_means = d_dict[idx][pos][kmer]#['norm_means']
+                    n_reads_per_run = len(norm_means)
+                    # Drop runs with too few reads (can't be modelled). For too many reads,
+                    # truncate to the first max_count (file order, deterministic) rather than
+                    # dropping the run, so a user can further subset at the diffmod stage on
+                    # top of any cap already applied during dataprep.
+                    if n_reads_per_run < min_count:
+                        continue
+                    if (max_count is not None) and (n_reads_per_run > max_count):
+                        norm_means = norm_means[:max_count]
+                        n_reads_per_run = max_count
+                    n_reads[condition_name] += [n_reads_per_run]
+                    y += norm_means
+                    # read_ids += list(data_dict[run_name][idx][pos][kmer]['read_ids'][:])
+                    condition_labels += [condition_name]*n_reads_per_run
+                    run_labels += [run_name]*n_reads_per_run
+        else:
+            # Pooling: reads from all runs of a condition are combined into one group.
+            # Gather the runs present at this (pos,kmer), preserving data_dict order.
+            runs_by_condition = defaultdict(list)
+            for (condition_name,run_name), d_dict in data_dict.items():
+                if d_dict is not None:
+                    runs_by_condition[condition_name] += [(run_name, d_dict[idx][pos][kmer])]
+            for condition_name, runs in runs_by_condition.items():
+                total = sum(len(norm_means) for _, norm_means in runs)
+                if (max_count is None) or (total <= max_count):
+                    # Under the cap: keep every read (per-run order). Read order does not
+                    # affect the model output, so this matches the original pooled behaviour.
+                    for run_name, norm_means in runs:
+                        n_reads[condition_name] += [len(norm_means)]
+                        y += norm_means
+                        condition_labels += [condition_name]*len(norm_means)
+                        run_labels += [run_name]*len(norm_means)
+                else:
+                    # Over the cap: select reads round-robin across the runs (1st read of
+                    # each run, then 2nd, ...) up to max_count, so the subset is evenly
+                    # distributed across runs and deterministic, instead of front-loading
+                    # the first run.
+                    run_streams = [[(value, run_name) for value in norm_means]
+                                   for run_name, norm_means in runs]
+                    selected = [read for group in itertools.zip_longest(*run_streams)
+                                for read in group if read is not None][:max_count]
+                    per_run = defaultdict(int)
+                    for value, run_name in selected:
+                        y += [value]
+                        condition_labels += [condition_name]
+                        run_labels += [run_name]
+                        per_run[run_name] += 1
+                    n_reads[condition_name] += list(per_run.values())
 
         y = np.array(y)
         # read_ids = np.array(read_ids)

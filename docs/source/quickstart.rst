@@ -3,6 +3,44 @@
 Quickstart - Detection of differential RNA modifications
 =========================================================
 
+.. note::
+   **Updates in xPore v2.2:** xPore is now compatible with genome alignments and RNA004 data — see the table below and the :ref:`Data preparation from raw reads <preparation>` section for more information.
+
+xPore is now compatible with genome alignment. See below for the minimal commands to run xPore on transcriptome- or genome-aligned data:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 48 30
+
+   * -
+     - **Dataprep**
+     - **Diffmod**
+   * - Transcriptome alignment (output transcriptome coordinates)
+     - | ``xpore dataprep``
+       | ``--eventalign <eventalign.txt>``
+       | ``--out_dir <out_dir>``
+     - | ``xpore diffmod``
+       | ``--config <config.yml>``
+   * - Transcriptome alignment (output genome coordinates)
+     - | ``xpore dataprep``
+       | ``--eventalign <eventalign.txt>``
+       | ``--out_dir <out_dir>``
+       | ``--genome``
+       | ``--transcript_fasta <transcript.fa>``
+       | ``--gtf_or_gff <annotation.gtf>``
+     - | ``xpore diffmod``
+       | ``--config <config.yml>``
+   * - Genome alignment
+     - | ``xpore dataprep``
+       | ``--eventalign <eventalign.txt>``
+       | ``--out_dir <out_dir>``
+       | ``--kmer_source model_kmer``
+     - | ``xpore diffmod``
+       | ``--config <config.yml>``
+
+Running Example Demo Data
+-------------------------
+
 Download and extract the demo dataset from our `zenodo <https://zenodo.org/record/5162402/files/demo.tar.gz>`_::
 
     wget https://zenodo.org/record/5162402/files/demo.tar.gz
@@ -61,8 +99,12 @@ Below is how it looks like::
 
     out: ./out # output dir
 
+    # The demo data is RNA002. Since v2.2 the default prior is the RNA004 model,
+    # so point xpore-diffmod at the bundled RNA002 model to reproduce the demo:
+    prior: /path/to/xpore/diffmod/RNA002_5mer_model.csv
 
-See the :ref:`Configuration file page <configuration>` for more details.
+
+See the :ref:`Configuration file page <configuration>` for more details. Note that since xPore v2.2 the default unmodified-signal prior is the RNA004 model; for RNA002 data (like this demo) set ``prior:`` to the bundled ``RNA002_5mer_model.csv`` as shown above.
 
 3. Now that we have the data and the configuration file ready for modelling differential modifications using ``xpore-diffmod``. 
 

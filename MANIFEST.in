@@ -1,1 +1,2 @@
-include xpore/diffmod/model_kmer.csv
+include xpore/diffmod/RNA002_5mer_model.csv
+include xpore/diffmod/RNA004_5mer_model.csv

@@ -19,7 +19,7 @@ class Configurator(object):
         if 'prior' in self.yaml:
             paths['model_kmer'] = os.path.abspath(self.yaml['prior'])
         else:
-            paths['model_kmer'] = os.path.join(os.path.dirname(__file__),'model_kmer.csv')
+            paths['model_kmer'] = os.path.join(os.path.dirname(__file__),'RNA004_5mer_model.csv')
 
         paths['out_dir'] = os.path.join(os.path.abspath(self.yaml['out']))
         paths.update(misc.makedirs(paths['out_dir'],sub_dirs=['models']))
