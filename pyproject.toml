@@ -37,6 +37,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 test = ["pytest"]
+docs = ["sphinx", "sphinx_rtd_theme"]
 
 [project.urls]
 homepage = "https://github.com/GoekeLab/xpore"
