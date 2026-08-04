@@ -17,5 +17,5 @@ Installation from our GitHub repository
 
     git clone https://github.com/GoekeLab/xpore.git
     cd xpore
-    python setup.py install
+    pip install .
 
