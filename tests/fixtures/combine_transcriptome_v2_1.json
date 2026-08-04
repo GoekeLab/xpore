@@ -1,25 +1,3 @@
-{
-  "_comment": "xPore v2.1 reference output captured from upstream/master; regenerate via _regenerate_combine_v2_1.py.",
-  "input_eventalign": "ENST1\t100\tGGACT\t0\tt\t1\t120.5\t2.0\t0.01\tGGACT\t120.0\t1.5\t0.5\t1000\t1005\nENST1\t100\tGGACT\t0\tt\t2\t118.0\t2.1\t0.01\tGGACT\t120.0\t1.5\t0.4\t1005\t1008\nENST1\t101\tGACTA\t0\tt\t3\t95.0\t1.8\t0.01\tGACTA\t95.5\t1.4\t0.3\t1008\t1013\nENST1\t102\tACTAG\t0\tt\t4\t104.5\t1.9\t0.01\tACTAG\t104.0\t1.6\t0.2\t1013\t1018",
-  "kmer_col": "reference_kmer",
-  "expected": [
-    [
-      "ENST1",
-      102,
-      "GGACT",
-      119.6
-    ],
-    [
-      "ENST1",
-      103,
-      "GACTA",
-      95.0
-    ],
-    [
-      "ENST1",
-      104,
-      "ACTAG",
-      104.5
-    ]
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:35d97fbab80c9ed355eb790348cfc72eb38c6f4b9369f5de3cabaeaf5bd1f566
+size 722
