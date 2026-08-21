@@ -26,9 +26,9 @@ Contents
    
    installation
    quickstart
+   running_demo_data
    outputtable
    configuration
-   preparation
    data
    cmd
    citing
