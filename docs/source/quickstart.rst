@@ -85,6 +85,8 @@ Resquiggle (align the raw signal to the reference) to produce the eventalign fil
 
 For **RNA004** data, add ``--kmer-model <PATH/TO/5-mer-model>``: recent versions of f5c auto-select the 9-mer model for RNA004, which xPore cannot use — xPore requires the 5-mer model (see `xPore issue #215 <https://github.com/GoekeLab/xpore/issues/215>`_).
 
+For **genome-aligned** data, use `f5c v1.7 <https://github.com/hasindu2008/f5c/releases/tag/v1.7>`_ or later — it is the version tested for enabling genome-aligned RNA with xPore v2.2.
+
 ``nanopolish eventalign`` can be used instead with the same arguments. Note that the ``--genome`` argument here refers to the **alignment reference** (the transcriptome or genome FASTA used in step 2).
 
 4. Preprocess with ``xpore dataprep``
