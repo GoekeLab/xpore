@@ -10,16 +10,16 @@ We provide 2 main scripts to run the analysis of differential RNA modifications 
 
 * Input
 
-Output files from ``nanopolish eventalgin``. Please refer to :ref:`Data preparation <preparation>` for the full Nanopolish command.
+Output files from ``nanopolish eventalign`` or ``f5c eventalign``. Please refer to :ref:`Quickstart <quickstart>` for the full commands.
 
 =================================   ==========  ===================  ============================================================================================================
 Argument name                       Required    Default value         Description
 =================================   ==========  ===================  ============================================================================================================
---eventalign=FILE                   Yes         NA                    Eventalign filepath, the output from nanopolish.         
+--eventalign=FILE                   Yes         NA                    Eventalign filepath, the output from nanopolish or f5c eventalign.
 --out_dir=DIR                       Yes         NA                    Output directory.
 --gtf_or_gff=FILE                   No          NA                    GTF or GFF file path used for mapping transcriptomic to genomic coordinates.
 --transcript_fasta=FILE             No          NA                    Transcript FASTA path used for mapping transcriptomic to genomic coordinates.
---skip_eventalign_indexing          No          False                 To skip indexing the eventalign nanopolish output.
+--skip_eventalign_indexing          No          False                 To skip indexing the eventalign output.
 --genome                            No          False                 To run on Genomic coordinates. Without this argument, the program will run on transcriptomic coordinates.
 --kmer_source=STR                   No          reference_kmer        Which kmer column to use from the eventalign file: ``reference_kmer`` (default, for transcriptome alignments) or ``model_kmer`` (for genome alignments, which contain reverse-strand reads).
 --n_processes=NUM                   No          1                     Number of processes to run.
@@ -33,7 +33,7 @@ Argument name                       Required    Default value         Descriptio
 ======================  ==============  ===============================================================================================================================================================
 File name               File type       Description
 ======================  ==============  ===============================================================================================================================================================
-eventalign.index        csv             File index indicating the position in the `eventalign.txt` file (the output of nanopolish eventalign) where the segmentation information of each read index is stored, allowing a random access.
+eventalign.index        csv             File index indicating the position in the `eventalign.txt` file (the output of nanopolish or f5c eventalign) where the segmentation information of each read index is stored, allowing a random access.
 data.json               json            Intensity level mean for each position.
 data.index              csv             File index indicating the position in the `data.json` file where the intensity level means across positions of each gene is stored, allowing a random access.
 data.log                txt             Gene ids being processed.
